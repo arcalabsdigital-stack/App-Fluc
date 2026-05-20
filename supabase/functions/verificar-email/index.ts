@@ -4,8 +4,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
 }
 
 Deno.serve(async (req) => {
@@ -24,10 +23,8 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    const { data, error } = await supabaseAdmin.rpc('check_user_email_exists', {
-      p_email: email,
-    })
-
+    const { data, error } = await supabaseAdmin.rpc('check_user_email_exists', { p_email: email })
+    
     if (error) {
       console.error('Error checking email:', error)
       throw error
