@@ -12,11 +12,13 @@ import { CreditCard, AlertTriangle, ExternalLink, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase/client'
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 export function BillingSettings() {
   const { currentWorkspace, subscription, session } = useAuth()
   const [loading, setLoading] = useState(false)
   const [history, setHistory] = useState<any[]>([])
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (currentWorkspace?.id) {
@@ -34,37 +36,8 @@ export function BillingSettings() {
     if (data) setHistory(data)
   }
 
-  const handleCheckout = async () => {
-    if (!subscription || !currentWorkspace || !session) return
-    setLoading(true)
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            plan: subscription.plan || 'Fluxo',
-            organization_id: currentWorkspace.id,
-          }),
-        },
-      )
-
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erro ao gerar pagamento')
-
-      if (data.invoiceUrl) {
-        window.open(data.invoiceUrl, '_blank')
-        toast.success('Link de pagamento gerado com sucesso!')
-      }
-    } catch (e: any) {
-      toast.error(e.message || 'Erro ao processar pagamento.')
-    } finally {
-      setLoading(false)
-    }
+  const handleCheckout = () => {
+    navigate('/checkout')
   }
 
   const isExpired =
@@ -137,13 +110,9 @@ export function BillingSettings() {
             <div className="flex flex-col gap-2 min-w-[200px]">
               <Button
                 onClick={handleCheckout}
-                disabled={loading}
                 className="w-full shadow-sm"
                 variant={isExpired ? 'default' : 'outline'}
               >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : null}
                 {isExpired ? 'Pagar Agora' : 'Fazer Upgrade / Renovar'}
               </Button>
             </div>

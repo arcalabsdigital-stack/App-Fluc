@@ -11,11 +11,13 @@ import {
   FileText,
   TrendingUp,
   Target,
+  PlayCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
+import { useTourStore } from '@/stores/useTourStore'
 
 const SidebarItem = ({
   icon: Icon,
@@ -24,41 +26,57 @@ const SidebarItem = ({
   isActive,
   badge,
   onClick,
+  id,
 }: {
   icon: any
   label: string
-  to: string
-  isActive: boolean
+  to?: string
+  isActive?: boolean
   badge?: string
   onClick?: () => void
-}) => (
-  <Link
-    to={to}
-    onClick={onClick}
-    className={cn(
-      'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group hover:bg-white hover:shadow-sm',
-      isActive
-        ? 'text-primary font-semibold bg-white shadow-sm'
-        : 'text-gray-500',
-    )}
-  >
-    <Icon
-      className={cn(
-        'w-5 h-5',
-        isActive ? 'text-primary' : 'text-gray-400 group-hover:text-primary',
+  id?: string
+}) => {
+  const className = cn(
+    'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group hover:bg-white hover:shadow-sm w-full text-left',
+    isActive
+      ? 'text-primary font-semibold bg-white shadow-sm'
+      : 'text-gray-500',
+  )
+
+  const content = (
+    <>
+      <Icon
+        className={cn(
+          'w-5 h-5',
+          isActive ? 'text-primary' : 'text-gray-400 group-hover:text-primary',
+        )}
+      />
+      <span className="flex-1">{label}</span>
+      {badge && (
+        <Badge
+          variant="secondary"
+          className="bg-red-100 text-red-500 hover:bg-red-200 h-5 w-5 p-0 flex items-center justify-center rounded-full text-xs"
+        >
+          {badge}
+        </Badge>
       )}
-    />
-    <span className="flex-1">{label}</span>
-    {badge && (
-      <Badge
-        variant="secondary"
-        className="bg-red-100 text-red-500 hover:bg-red-200 h-5 w-5 p-0 flex items-center justify-center rounded-full text-xs"
-      >
-        {badge}
-      </Badge>
-    )}
-  </Link>
-)
+    </>
+  )
+
+  if (to) {
+    return (
+      <Link id={id} to={to} onClick={onClick} className={className}>
+        {content}
+      </Link>
+    )
+  }
+
+  return (
+    <button id={id} onClick={onClick} className={className}>
+      {content}
+    </button>
+  )
+}
 
 export function Sidebar({
   className,
@@ -187,6 +205,7 @@ export function Sidebar({
           </div>
           <div className="space-y-1">
             <SidebarItem
+              id="sidebar-item-Início"
               icon={LayoutDashboard}
               label="Início"
               to="/"
@@ -194,6 +213,7 @@ export function Sidebar({
               onClick={onNavigate}
             />
             <SidebarItem
+              id="sidebar-item-Orçamentos"
               icon={Target}
               label="Orçamentos"
               to="/budgets"
@@ -201,6 +221,7 @@ export function Sidebar({
               onClick={onNavigate}
             />
             <SidebarItem
+              id="sidebar-item-Transações"
               icon={Wallet}
               label="Transações"
               to="/payments"
@@ -209,6 +230,7 @@ export function Sidebar({
             />
             {role === 'admin' && (
               <SidebarItem
+                id="sidebar-item-Usuários"
                 icon={Users}
                 label="Gerenciar Usuários"
                 to="/users"
@@ -217,6 +239,7 @@ export function Sidebar({
               />
             )}
             <SidebarItem
+              id="sidebar-item-Histórico"
               icon={History}
               label="Histórico"
               to="/history"
@@ -224,22 +247,11 @@ export function Sidebar({
               onClick={onNavigate}
             />
             <SidebarItem
-              icon={FileText}
-              label="DRE"
-              to="/valuation?tab=dre"
-              isActive={
-                pathname === '/valuation' && location.search.includes('tab=dre')
-              }
-              onClick={onNavigate}
-            />
-            <SidebarItem
+              id="sidebar-item-DRE-Valuation"
               icon={TrendingUp}
-              label="Valuation"
+              label="DRE/Valuation"
               to="/valuation"
-              isActive={
-                pathname === '/valuation' &&
-                !location.search.includes('tab=dre')
-              }
+              isActive={pathname === '/valuation'}
               onClick={onNavigate}
             />
           </div>
@@ -263,6 +275,15 @@ export function Sidebar({
               to="/settings"
               isActive={pathname === '/settings'}
               onClick={onNavigate}
+            />
+            <SidebarItem
+              id="sidebar-item-Como-Funciona"
+              icon={PlayCircle}
+              label="Como Funciona"
+              onClick={() => {
+                if (onNavigate) onNavigate()
+                useTourStore.getState().startTour()
+              }}
             />
           </div>
         </div>

@@ -5,6 +5,7 @@ import { Header } from './Header'
 import { useAuth } from '@/hooks/use-auth'
 import { AlertTriangle } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { TourOverlay } from './TourOverlay'
 
 export default function Layout() {
   const { subscription } = useAuth()
@@ -19,6 +20,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-[#F8F9FB]">
       <Sidebar />
+      <TourOverlay />
       <div className="flex flex-col min-h-screen md:pl-[280px]">
         {trialEndingSoon && (
           <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-sm text-amber-800 flex items-center justify-center gap-2">

@@ -32,6 +32,7 @@ export interface Profile {
   must_change_password?: boolean
   cnpj_ou_cpf?: string | null
   razao_social_ou_nome?: string | null
+  onboarding_completed?: boolean
 }
 
 interface AuthContextType {
