@@ -4,8 +4,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
 }
 
 Deno.serve(async (req) => {
@@ -16,9 +15,7 @@ Deno.serve(async (req) => {
   try {
     const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY')
     if (!ASAAS_API_KEY) {
-      throw new Error(
-        'A chave da API (ASAAS_API_KEY) não está configurada nos segredos.',
-      )
+      throw new Error('A chave da API (ASAAS_API_KEY) não está configurada nos segredos.')
     }
 
     const authHeader = req.headers.get('Authorization')
@@ -38,7 +35,7 @@ Deno.serve(async (req) => {
       data: { user },
       error: userError,
     } = await supabaseClient.auth.getUser()
-
+    
     if (userError || !user) throw new Error('Não autorizado.')
 
     const { data: profile } = await supabaseClient
@@ -57,19 +54,19 @@ Deno.serve(async (req) => {
       {
         name: 'Fluxo',
         description: 'Ideal para começar',
-        amount: 49.9,
+        amount: 49.90,
         interval: 'MENSAL',
       },
       {
         name: 'Lucro',
         description: 'Mais popular',
-        amount: 89.9,
+        amount: 89.90,
         interval: 'MENSAL',
       },
       {
         name: 'Patrimônio',
         description: 'Para empresas em crescimento',
-        amount: 199.9,
+        amount: 199.90,
         interval: 'MENSAL',
       },
     ]
@@ -121,17 +118,18 @@ Deno.serve(async (req) => {
 
     const updatePromises = asaasResponses.map((asaasPlan: any, index) => {
       const planName = plansPayloads[index].name
-      return supabaseAdmin.from('plans').upsert(
-        {
-          name: planName,
-          asaas_plan_id: asaasPlan.id,
-          price: plansPayloads[index].amount,
-          features: featuresMap[planName],
-          billing_period:
-            plansPayloads[index].interval === 'MENSAL' ? 'mensal' : 'anual',
-        },
-        { onConflict: 'name' },
-      )
+      return supabaseAdmin
+        .from('plans')
+        .upsert(
+          {
+            name: planName,
+            asaas_plan_id: asaasPlan.id,
+            price: plansPayloads[index].amount,
+            features: featuresMap[planName],
+            billing_period: plansPayloads[index].interval === 'MENSAL' ? 'mensal' : 'anual',
+          },
+          { onConflict: 'name' }
+        )
     })
 
     await Promise.all(updatePromises)
@@ -145,7 +143,7 @@ Deno.serve(async (req) => {
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
-      },
+      }
     )
   } catch (error: any) {
     console.error('Erro na Edge Function criar-planos-asas:', error)
