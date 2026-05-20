@@ -24,47 +24,55 @@ Deno.serve(async (req) => {
     if (!sub) {
       return new Response('Subscription not found', { status: 200 })
     }
-    
+
     // Automatic Reward Application Logic
     if (event === 'PAYMENT_CREATED' && payment.subscription) {
-       const { data: reward } = await supabase
-         .from('pending_rewards')
-         .select('*')
-         .eq('organization_id', sub.organization_id)
-         .eq('is_applied', false)
-         .order('created_at', { ascending: true })
-         .limit(1)
-         .single()
-       
-       if (reward) {
-         let discountVal = 0
-         if (reward.discount_type === 'PERCENTAGE') {
-           discountVal = payment.value * (reward.discount_value / 100)
-         } else {
-           discountVal = reward.discount_value
-         }
+      const { data: reward } = await supabase
+        .from('pending_rewards')
+        .select('*')
+        .eq('organization_id', sub.organization_id)
+        .eq('is_applied', false)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .single()
 
-         const newTotal = Math.max(0, payment.value - discountVal)
+      if (reward) {
+        let discountVal = 0
+        if (reward.discount_type === 'PERCENTAGE') {
+          discountVal = payment.value * (reward.discount_value / 100)
+        } else {
+          discountVal = reward.discount_value
+        }
 
-         const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY')
-         if (ASAAS_API_KEY) {
-           await fetch(`https://api.asaas.com/v3/payments/${payment.id}`, {
-             method: 'PUT',
-             headers: { 'Content-Type': 'application/json', 'access_token': ASAAS_API_KEY },
-             body: JSON.stringify({ value: newTotal })
-           })
-           
-           await supabase.from('pending_rewards').update({ is_applied: true }).eq('id', reward.id)
-         }
-       }
+        const newTotal = Math.max(0, payment.value - discountVal)
+
+        const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY')
+        if (ASAAS_API_KEY) {
+          await fetch(`https://api.asaas.com/v3/payments/${payment.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              access_token: ASAAS_API_KEY,
+            },
+            body: JSON.stringify({ value: newTotal }),
+          })
+
+          await supabase
+            .from('pending_rewards')
+            .update({ is_applied: true })
+            .eq('id', reward.id)
+        }
+      }
     }
 
     if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
       await supabase
         .from('subscriptions')
-        .update({ 
+        .update({
           status: 'active',
-          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          current_period_end: new Date(
+            Date.now() + 30 * 24 * 60 * 60 * 1000,
+          ).toISOString(),
         })
         .eq('id', sub.id)
 
@@ -80,24 +88,22 @@ Deno.serve(async (req) => {
           .update({
             status: 'paid',
             payment_date: new Date().toISOString(),
-            amount: payment.value
+            amount: payment.value,
           })
           .eq('id', existingHist.id)
       } else {
-        await supabase
-          .from('billing_history')
-          .insert({
-            organization_id: sub.organization_id,
-            subscription_id: sub.id,
-            amount: payment.value,
-            status: 'paid',
-            payment_date: new Date().toISOString(),
-            asaas_payment_id: payment.id,
-            invoice_url: payment.invoiceUrl || ''
-          })
+        await supabase.from('billing_history').insert({
+          organization_id: sub.organization_id,
+          subscription_id: sub.id,
+          amount: payment.value,
+          status: 'paid',
+          payment_date: new Date().toISOString(),
+          asaas_payment_id: payment.id,
+          invoice_url: payment.invoiceUrl || '',
+        })
       }
     } else if (event === 'PAYMENT_OVERDUE') {
-       await supabase
+      await supabase
         .from('subscriptions')
         .update({ status: 'past_due' })
         .eq('id', sub.id)
