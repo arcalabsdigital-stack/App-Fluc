@@ -8,10 +8,11 @@ import {
   LogOut,
   Users,
   History,
-  FileText,
   TrendingUp,
   Target,
   PlayCircle,
+  Tag,
+  ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -256,6 +257,30 @@ export function Sidebar({
             />
           </div>
         </div>
+
+        {role === 'super_admin' && (
+          <div>
+            <div className="px-4 mb-2 text-xs font-semibold text-blue-500 uppercase tracking-wider">
+              Painel Fluc
+            </div>
+            <div className="space-y-1 mb-6">
+              <SidebarItem
+                icon={Tag}
+                label="Gestão de Cupons"
+                to="/admin/coupons"
+                isActive={pathname === '/admin/coupons'}
+                onClick={onNavigate}
+              />
+              <SidebarItem
+                icon={ShieldCheck}
+                label="Gerenciar Staff"
+                to="/admin/staff"
+                isActive={pathname === '/admin/staff'}
+                onClick={onNavigate}
+              />
+            </div>
+          </div>
+        )}
 
         <div>
           <div className="px-4 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">

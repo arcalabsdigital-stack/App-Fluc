@@ -17,6 +17,8 @@ import Search from './pages/Search'
 import Checkout from './pages/Checkout'
 import Valuation from './pages/Valuation'
 import Budgets from './pages/Budgets'
+import AdminCoupons from './pages/admin/Coupons'
+import AdminStaff from './pages/admin/Staff'
 import { TransactionProvider } from '@/stores/useTransactionStore'
 import { AuthProvider } from '@/hooks/use-auth'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -45,6 +47,8 @@ const App = () => (
                 <Route path="/search" element={<Search />} />
                 <Route path="/valuation" element={<Valuation />} />
                 <Route path="/budgets" element={<Budgets />} />
+                <Route path="/admin/coupons" element={<AdminCoupons />} />
+                <Route path="/admin/staff" element={<AdminStaff />} />
               </Route>
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/checkout" element={<Checkout />} />

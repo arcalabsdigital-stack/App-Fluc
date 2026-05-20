@@ -83,6 +83,10 @@ export const ProtectedRoute = () => {
     return <Navigate to="/" replace />
   }
 
+  if (location.pathname.startsWith('/admin') && role !== 'super_admin') {
+    return <Navigate to="/" replace />
+  }
+
   if (
     profile?.must_change_password &&
     location.pathname !== '/settings' &&
