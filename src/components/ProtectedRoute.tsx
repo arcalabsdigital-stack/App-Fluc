@@ -15,7 +15,11 @@ export const ProtectedRoute = () => {
         (subscription.status === 'trial' &&
           new Date(subscription.trial_end) < new Date())
 
-      if (isExpired && location.pathname !== '/settings') {
+      if (
+        isExpired &&
+        location.pathname !== '/settings' &&
+        location.pathname !== '/checkout'
+      ) {
         toast.error(
           'Seu plano está inativo. Regularize sua situação para continuar.',
         )
@@ -107,7 +111,11 @@ export const ProtectedRoute = () => {
       subscription.status === 'past_due' ||
       (subscription.status === 'trial' &&
         new Date(subscription.trial_end) < new Date())
-    if (isExpired && location.pathname !== '/settings') {
+    if (
+      isExpired &&
+      location.pathname !== '/settings' &&
+      location.pathname !== '/checkout'
+    ) {
       return <Navigate to="/settings?tab=billing" replace />
     }
   }

@@ -197,6 +197,14 @@ export default function Checkout() {
 
       if (data?.invoiceUrl) {
         window.location.href = data.invoiceUrl
+      } else if (data?.success) {
+        toast({
+          title: 'Sucesso!',
+          description: 'Plano ativado com sucesso! Redirecionando...',
+        })
+        setTimeout(() => {
+          window.location.href = '/'
+        }, 1500)
       } else {
         toast({
           title: 'Sucesso!',
