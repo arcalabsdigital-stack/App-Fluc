@@ -95,6 +95,7 @@ export function Sidebar({
     loading: authLoading,
     reloadProfile,
     profile,
+    user,
   } = useAuth()
   const navigate = useNavigate()
 
@@ -258,29 +259,32 @@ export function Sidebar({
           </div>
         </div>
 
-        {role === 'super_admin' && (
-          <div>
-            <div className="px-4 mb-2 text-xs font-semibold text-blue-500 uppercase tracking-wider">
-              Painel Fluc
+        {user?.email &&
+          ['marciomorais2722@gmail.com', 'arcalabs.digital@gmail.com'].includes(
+            user.email,
+          ) && (
+            <div>
+              <div className="px-4 mb-2 text-xs font-semibold text-blue-500 uppercase tracking-wider">
+                Painel Fluc
+              </div>
+              <div className="space-y-1 mb-6">
+                <SidebarItem
+                  icon={Tag}
+                  label="Gestão de Cupons"
+                  to="/admin/coupons"
+                  isActive={pathname === '/admin/coupons'}
+                  onClick={onNavigate}
+                />
+                <SidebarItem
+                  icon={ShieldCheck}
+                  label="Gerenciar Staff"
+                  to="/admin/staff"
+                  isActive={pathname === '/admin/staff'}
+                  onClick={onNavigate}
+                />
+              </div>
             </div>
-            <div className="space-y-1 mb-6">
-              <SidebarItem
-                icon={Tag}
-                label="Gestão de Cupons"
-                to="/admin/coupons"
-                isActive={pathname === '/admin/coupons'}
-                onClick={onNavigate}
-              />
-              <SidebarItem
-                icon={ShieldCheck}
-                label="Gerenciar Staff"
-                to="/admin/staff"
-                isActive={pathname === '/admin/staff'}
-                onClick={onNavigate}
-              />
-            </div>
-          </div>
-        )}
+          )}
 
         <div>
           <div className="px-4 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">

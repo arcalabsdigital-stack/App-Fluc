@@ -83,7 +83,13 @@ export const ProtectedRoute = () => {
     return <Navigate to="/" replace />
   }
 
-  if (location.pathname.startsWith('/admin') && role !== 'super_admin') {
+  const isSuperAdmin =
+    session?.user?.email &&
+    ['marciomorais2722@gmail.com', 'arcalabs.digital@gmail.com'].includes(
+      session.user.email,
+    )
+
+  if (location.pathname.startsWith('/admin') && !isSuperAdmin) {
     return <Navigate to="/" replace />
   }
 
