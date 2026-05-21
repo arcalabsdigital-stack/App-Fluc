@@ -95,6 +95,15 @@ export const dashboardService = {
     return data
   },
 
+  async getCategories() {
+    const { data, error } = await supabase.from('categories').select('id, nome')
+    if (error) {
+      console.error('Error fetching categories:', error)
+      return []
+    }
+    return data
+  },
+
   async getTransactionsForPeriod(start: Date, end: Date): Promise<Transacao[]> {
     // Select respects RLS
     const { data, error } = await supabase

@@ -20,7 +20,6 @@ import {
   endOfDay,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { mockCategories } from '@/lib/data'
 import { toast } from 'sonner'
 import useTransactionStore from '@/stores/useTransactionStore'
 import { useAuth } from '@/hooks/use-auth'
@@ -69,25 +68,32 @@ export const useDashboard = () => {
     try {
       setLoading(true)
       // We fetch data regardless of role, trusting RLS and service logic to filter
-      const [kpiData, recentData, monthData, futureData, recurringData] =
-        await Promise.all([
-          dashboardService.getKPIs(selectedDate),
-          dashboardService.getRecentTransactions(6),
-          dashboardService.getTransactionsForPeriod(
-            startOfMonth(selectedDate),
-            endOfMonth(selectedDate),
-          ),
-          dashboardService.getFutureTransactions(
-            addMonths(selectedDate, 12),
-            selectedDate,
-          ),
-          dashboardService.getRecurringTransactions(),
-        ])
+      const [
+        kpiData,
+        recentData,
+        monthData,
+        futureData,
+        recurringData,
+        categoriesData,
+      ] = await Promise.all([
+        dashboardService.getKPIs(selectedDate),
+        dashboardService.getRecentTransactions(6),
+        dashboardService.getTransactionsForPeriod(
+          startOfMonth(selectedDate),
+          endOfMonth(selectedDate),
+        ),
+        dashboardService.getFutureTransactions(
+          addMonths(selectedDate, 12),
+          selectedDate,
+        ),
+        dashboardService.getRecurringTransactions(),
+        dashboardService.getCategories(),
+      ])
 
       setKpis(kpiData)
       setRecentTransactions(recentData)
       processChartData(monthData, selectedDate)
-      processCategoryData(monthData)
+      processCategoryData(monthData, categoriesData)
       processPaymentData(monthData)
       processProjectionData(
         kpiData?.totalBalance || 0,
@@ -129,16 +135,28 @@ export const useDashboard = () => {
     setChartData(data)
   }
 
-  const processCategoryData = (transactions: Transacao[]) => {
+  const processCategoryData = (
+    transactions: Transacao[],
+    categories: { id: string; nome: string }[],
+  ) => {
     const expenses = transactions.filter(
       (t) => t.tipo_id === TipoTransacao.Despesa,
     )
     const totalExpenses = expenses.reduce((acc, curr) => acc + curr.valor, 0)
 
     const categoryMap = new Map<string, number>()
+
     expenses.forEach((t) => {
-      const current = categoryMap.get(t.categoria_id) || 0
-      categoryMap.set(t.categoria_id, current + t.valor)
+      const idOrName = t.categoria_id
+      const matchedCategory = categories.find(
+        (c) => c.id === idOrName || c.nome === idOrName,
+      )
+      const catName = matchedCategory
+        ? matchedCategory.nome
+        : idOrName || 'Outros'
+
+      const current = categoryMap.get(catName) || 0
+      categoryMap.set(catName, current + t.valor)
     })
 
     const colors = [
@@ -154,11 +172,9 @@ export const useDashboard = () => {
     const distribution: CategoryDistribution[] = Array.from(
       categoryMap.entries(),
     )
-      .map(([id, value], index) => {
-        const catName =
-          mockCategories.find((c) => c.id === id)?.nome || 'Outros'
+      .map(([name, value], index) => {
         return {
-          name: catName,
+          name,
           value,
           percentage: totalExpenses > 0 ? (value / totalExpenses) * 100 : 0,
           color: colors[index % colors.length],
