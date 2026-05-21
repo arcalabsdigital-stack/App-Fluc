@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Table,
   TableBody,
@@ -19,6 +20,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Transacao, TipoTransacao } from '@/lib/types'
 import { format } from 'date-fns'
 import { Edit, Trash2, Download, Check, Clock } from 'lucide-react'
@@ -41,6 +43,8 @@ export function TransactionsTable({
 }: TransactionsTableProps) {
   const { categories, deleteTransaction, updateTransaction } =
     useTransactionStore()
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [isDeletingBulk, setIsDeletingBulk] = useState(false)
 
   const handleToggleStatus = (transaction: Transacao) => {
     if (isVisitor || !updateTransaction) return
@@ -62,6 +66,35 @@ export function TransactionsTable({
 
   const handleExport = () => {
     import('@/lib/exportUtils').then((m) => m.exportToCSV(data))
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(data.map((t) => t.id))
+    } else {
+      setSelectedIds([])
+    }
+  }
+
+  const handleSelectRow = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds((prev) => [...prev, id])
+    } else {
+      setSelectedIds((prev) => prev.filter((selectedId) => selectedId !== id))
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    setIsDeletingBulk(true)
+    try {
+      for (const id of selectedIds) {
+        await deleteTransaction(id)
+      }
+      setSelectedIds([])
+    } finally {
+      setIsDeletingBulk(false)
+    }
   }
 
   if (data.length === 0) {
@@ -87,8 +120,44 @@ export function TransactionsTable({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center flex-wrap gap-4">
-        <div className="text-sm text-gray-500 font-medium">
-          Total de {data.length} transações
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-500 font-medium">
+            Total de {data.length} transações
+          </div>
+          {selectedIds.length > 0 && !isVisitor && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={isDeletingBulk}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Deletar Selecionados ({selectedIds.length})
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Excluir transações em massa?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Você está prestes a excluir {selectedIds.length} transações.
+                    Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleBulkDelete}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    {isDeletingBulk ? 'Excluindo...' : 'Excluir'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {!isVisitor && <ImportTransactions onSuccess={onImportSuccess} />}
@@ -107,22 +176,35 @@ export function TransactionsTable({
         <Table wrapperClassName="max-h-[calc(100vh-280px)] min-h-[300px]">
           <TableHeader className="sticky top-0 z-20 bg-gray-50 shadow-sm">
             <TableRow className="bg-gray-50 hover:bg-gray-50">
-              <TableHead className="w-[120px] lg:w-[100px] lg:whitespace-nowrap">
+              {!isVisitor && (
+                <TableHead className="w-[40px] px-4">
+                  <Checkbox
+                    checked={
+                      selectedIds.length === data.length && data.length > 0
+                    }
+                    onCheckedChange={(checked) =>
+                      handleSelectAll(checked as boolean)
+                    }
+                    aria-label="Selecionar tudo"
+                  />
+                </TableHead>
+              )}
+              <TableHead className="w-[100px] lg:w-[100px] lg:whitespace-nowrap">
                 Data
               </TableHead>
               <TableHead className="lg:max-w-[250px] lg:truncate">
                 Descrição
               </TableHead>
-              <TableHead className="lg:w-[130px] lg:whitespace-nowrap">
+              <TableHead className="hidden md:table-cell lg:w-[130px] lg:whitespace-nowrap">
                 Categoria
               </TableHead>
-              <TableHead className="lg:w-[100px] lg:whitespace-nowrap">
+              <TableHead className="hidden sm:table-cell lg:w-[100px] lg:whitespace-nowrap">
                 Tipo
               </TableHead>
               <TableHead className="text-right lg:w-[110px] lg:whitespace-nowrap">
                 Valor
               </TableHead>
-              <TableHead className="lg:w-[140px] lg:whitespace-nowrap lg:truncate">
+              <TableHead className="hidden md:table-cell lg:w-[140px] lg:whitespace-nowrap lg:truncate">
                 Forma de Pagamento
               </TableHead>
               <TableHead className="w-[110px] text-center lg:whitespace-nowrap">
@@ -141,6 +223,17 @@ export function TransactionsTable({
                 key={transaction.id}
                 className="group bg-white hover:bg-slate-50"
               >
+                {!isVisitor && (
+                  <TableCell className="w-[40px] px-4">
+                    <Checkbox
+                      checked={selectedIds.includes(transaction.id)}
+                      onCheckedChange={(checked) =>
+                        handleSelectRow(transaction.id, checked as boolean)
+                      }
+                      aria-label="Selecionar transação"
+                    />
+                  </TableCell>
+                )}
                 <TableCell className="font-medium text-gray-600 lg:whitespace-nowrap">
                   {format(new Date(transaction.data), 'dd/MM/yyyy')}
                 </TableCell>
@@ -150,7 +243,7 @@ export function TransactionsTable({
                 >
                   {transaction.descricao}
                 </TableCell>
-                <TableCell className="lg:whitespace-nowrap">
+                <TableCell className="hidden md:table-cell lg:whitespace-nowrap">
                   <Badge
                     variant="secondary"
                     className="font-normal text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 lg:truncate lg:max-w-[110px]"
@@ -159,7 +252,7 @@ export function TransactionsTable({
                     {getCategoryName(transaction.categoria_id)}
                   </Badge>
                 </TableCell>
-                <TableCell className="lg:whitespace-nowrap">
+                <TableCell className="hidden sm:table-cell lg:whitespace-nowrap">
                   <Badge
                     variant="outline"
                     className={
@@ -183,7 +276,7 @@ export function TransactionsTable({
                   {formatCurrency(transaction.valor)}
                 </TableCell>
                 <TableCell
-                  className="text-gray-500 text-sm lg:whitespace-nowrap lg:truncate lg:max-w-[130px]"
+                  className="hidden md:table-cell text-gray-500 text-sm lg:whitespace-nowrap lg:truncate lg:max-w-[130px]"
                   title={transaction.forma_pagamento_id}
                 >
                   {transaction.forma_pagamento_id}

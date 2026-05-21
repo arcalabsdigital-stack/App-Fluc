@@ -132,9 +132,12 @@ const Index = () => {
   return (
     <div className="flex flex-col gap-4 sm:gap-6 animate-fade-in pb-10 px-0 sm:px-0">
       {/* Sticky Navigation Bar */}
-      <div className="sticky top-0 z-20 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-4 pt-2 -mx-4 px-4 sm:-mx-6 sm:px-6 mb-2 border-b border-border/50 gap-4">
+      <div className="sticky top-0 z-30 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-4 pt-2 -mx-4 px-4 sm:-mx-6 sm:px-6 mb-2 border-b border-border/50 gap-4">
         <h2 className="text-xl font-semibold hidden sm:block">Visão Geral</h2>
-        <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-between sm:justify-start">
+        <div
+          id="month-filters"
+          className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-between sm:justify-start"
+        >
           <Button
             variant="outline"
             size="icon"
@@ -200,7 +203,10 @@ const Index = () => {
       </div>
 
       {/* KPI Row */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6">
+      <div
+        id="dashboard-kpis"
+        className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6"
+      >
         {kpiData.map((kpi, index) => (
           <div
             key={index}

@@ -26,18 +26,23 @@ export function BreakevenCard() {
           0,
         )
         const txs = await dashboardService.getTransactionsForPeriod(start, end)
+        const recurringTxs = await dashboardService.getRecurringTransactions()
 
         let fixedCosts = 0
         let variableCosts = 0
         let revenue = 0
 
+        recurringTxs.forEach((rt) => {
+          if (rt.type === 'Despesa') {
+            fixedCosts += Number(rt.amount)
+          }
+        })
+
         txs.forEach((t: Transacao) => {
           if (t.tipo_id === 'Receita') {
             revenue += t.valor
-          } else {
-            if (t.recurring_transaction_id) {
-              fixedCosts += t.valor
-            } else {
+          } else if (t.tipo_id === 'Despesa') {
+            if (!t.recurring_transaction_id) {
               variableCosts += t.valor
             }
           }
@@ -62,7 +67,10 @@ export function BreakevenCard() {
   const reached = data.revenue >= data.breakeven && data.breakeven > 0
 
   return (
-    <Card className="rounded-3xl border-none shadow-sm overflow-hidden relative bg-white">
+    <Card
+      id="breakeven-card"
+      className="rounded-3xl border-none shadow-sm overflow-hidden relative bg-white"
+    >
       <CardHeader className="pb-2">
         <CardTitle className="text-lg font-bold flex items-center gap-2">
           <Target className="w-5 h-5 text-purple-500" />

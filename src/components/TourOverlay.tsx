@@ -13,10 +13,34 @@ const steps = [
       'Acompanhe seus saldos, despesas e receitas do mês. Essa é sua central de controle.',
   },
   {
+    target: 'month-filters',
+    title: 'Filtros de Mês',
+    content:
+      'Selecione o mês e o ano para visualizar os indicadores e gráficos correspondentes no dashboard.',
+  },
+  {
+    target: 'dashboard-kpis',
+    title: 'Indicadores Principais',
+    content:
+      'Aqui você acompanha de perto seu Saldo Total, Receitas, Despesas e a Margem de Eficiência.',
+  },
+  {
+    target: 'breakeven-card',
+    title: 'Ponto de Equilíbrio',
+    content:
+      'Acompanhe automaticamente o faturamento necessário para cobrir seus custos fixos e variáveis mensais.',
+  },
+  {
     target: 'sidebar-item-Transações',
     title: 'Transações',
     content:
       'Registre todas as suas entradas e saídas para manter seu fluxo de caixa atualizado.',
+  },
+  {
+    target: 'btn-add-transaction',
+    title: 'Nova Transação',
+    content:
+      'Adicione rapidamente novas receitas ou despesas usando o botão principal de adição de transação.',
   },
   {
     target: 'sidebar-item-DRE-Valuation',
