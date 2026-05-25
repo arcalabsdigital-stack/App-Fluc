@@ -239,9 +239,9 @@ export function RecurringTransactionsList() {
           <Loader2 className="w-8 h-8 animate-spin text-gray-300" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="flex flex-col gap-3">
           {recurring.length === 0 ? (
-            <div className="col-span-full bg-white rounded-3xl p-10 border shadow-sm text-center">
+            <div className="bg-white rounded-3xl p-10 border shadow-sm text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 mb-4">
                 <RepeatIcon className="w-8 h-8 text-gray-400" />
               </div>
@@ -261,58 +261,59 @@ export function RecurringTransactionsList() {
               return (
                 <div
                   key={r.id}
-                  className="bg-white rounded-3xl p-6 border shadow-sm hover:shadow-md transition-all relative group flex flex-col h-full"
+                  className="bg-white rounded-2xl p-4 sm:p-5 border shadow-sm hover:shadow-md transition-all group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full"
                 >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-3 bg-primary/5 text-primary rounded-2xl">
+                  <div className="flex items-center gap-4 flex-1 w-full">
+                    <div className="p-3 bg-primary/5 text-primary rounded-xl shrink-0 hidden sm:flex">
                       <RepeatIcon className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3
+                        className="font-bold text-gray-900 text-base truncate"
+                        title={r.description}
+                      >
+                        {r.description}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-gray-500">
+                        <span className="flex items-center gap-1.5 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100">
+                          <Tag className="w-3.5 h-3.5 text-gray-400" />
+                          <span className="font-medium truncate max-w-[120px]">
+                            {categoryName}
+                          </span>
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <CreditCard className="w-3.5 h-3.5 text-gray-400" />
+                          {frequencyLabel(r.frequency)}
+                        </span>
+                        <span className="hidden sm:inline text-gray-300">
+                          •
+                        </span>
+                        <span className="flex items-center gap-1.5 text-primary/90 font-medium">
+                          <Calendar className="w-3.5 h-3.5" />
+                          Próx:{' '}
+                          {format(new Date(r.next_date), "dd 'de' MMMM", {
+                            locale: ptBR,
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between w-full sm:w-auto gap-4 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-50">
+                    <div className="text-lg font-bold text-gray-900 whitespace-nowrap">
+                      R${' '}
+                      {r.amount.toLocaleString('pt-BR', {
+                        minimumFractionDigits: 2,
+                      })}
                     </div>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDelete(r.id)}
-                      className="text-gray-400 hover:text-red-500 hover:bg-red-50 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity absolute top-4 right-4"
+                      className="text-gray-400 hover:text-red-500 hover:bg-red-50 h-9 w-9 shrink-0"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
-                  </div>
-
-                  <h3
-                    className="font-bold text-gray-900 text-lg mb-1 line-clamp-1 pr-8"
-                    title={r.description}
-                  >
-                    {r.description}
-                  </h3>
-
-                  <div className="text-2xl font-bold text-gray-900 mb-5">
-                    R${' '}
-                    {r.amount.toLocaleString('pt-BR', {
-                      minimumFractionDigits: 2,
-                    })}
-                  </div>
-
-                  <div className="space-y-3 text-sm text-gray-600 mt-auto">
-                    <div className="flex items-center gap-3 bg-gray-50/50 p-2 rounded-lg">
-                      <Tag className="w-4 h-4 text-gray-400 shrink-0" />
-                      <span className="truncate font-medium">
-                        {categoryName}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 bg-gray-50/50 p-2 rounded-lg">
-                      <CreditCard className="w-4 h-4 text-gray-400 shrink-0" />
-                      <span className="font-medium">
-                        {frequencyLabel(r.frequency)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 bg-gray-50/50 p-2 rounded-lg text-primary">
-                      <Calendar className="w-4 h-4 shrink-0" />
-                      <span className="font-semibold">
-                        Próx:{' '}
-                        {format(new Date(r.next_date), "dd 'de' MMMM", {
-                          locale: ptBR,
-                        })}
-                      </span>
-                    </div>
                   </div>
                 </div>
               )
