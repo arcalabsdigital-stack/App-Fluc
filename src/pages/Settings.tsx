@@ -19,7 +19,6 @@ import {
   AlertTriangle,
   CreditCard,
 } from 'lucide-react'
-import { RecurringTransactionsSettings } from '@/components/settings/RecurringTransactionsSettings'
 import { BillingSettings } from '@/components/settings/BillingSettings'
 
 const Settings = () => {
@@ -190,14 +189,6 @@ const Settings = () => {
           >
             <User className="w-4 h-4 mr-2" />
             Perfil
-          </TabsTrigger>
-          <TabsTrigger
-            value="recurring"
-            className="h-full rounded-lg px-6 data-[state=active]:bg-gray-50 whitespace-nowrap"
-            disabled={profile?.must_change_password}
-          >
-            <RepeatIcon className="w-4 h-4 mr-2" />
-            Gastos Recorrentes
           </TabsTrigger>
           <TabsTrigger
             value="billing"
@@ -385,10 +376,6 @@ const Settings = () => {
               </form>
             </div>
           </div>
-        </TabsContent>
-
-        <TabsContent value="recurring" className="animate-fade-in">
-          <RecurringTransactionsSettings />
         </TabsContent>
 
         <TabsContent value="billing" className="animate-fade-in">

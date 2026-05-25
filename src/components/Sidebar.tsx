@@ -13,6 +13,7 @@ import {
   PlayCircle,
   Tag,
   ShieldCheck,
+  RepeatIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -220,6 +221,14 @@ export function Sidebar({
               label="Orçamentos"
               to="/budgets"
               isActive={pathname === '/budgets'}
+              onClick={onNavigate}
+            />
+            <SidebarItem
+              id="sidebar-item-Recorrentes"
+              icon={RepeatIcon}
+              label="Gastos Recorrentes"
+              to="/recurring"
+              isActive={pathname === '/recurring'}
               onClick={onNavigate}
             />
             <SidebarItem

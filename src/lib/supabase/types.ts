@@ -173,6 +173,50 @@ export type Database = {
           },
         ]
       }
+      categoria_simplificada: {
+        Row: {
+          accounting_group: string
+          criada_por_usuario: boolean | null
+          efeito_caixa: string
+          id: string
+          natureza_contabil: string
+          nome_simplificado: string
+          organization_id: string | null
+          permite_customizacao: boolean | null
+          tipo_grupo: string
+        }
+        Insert: {
+          accounting_group: string
+          criada_por_usuario?: boolean | null
+          efeito_caixa: string
+          id?: string
+          natureza_contabil: string
+          nome_simplificado: string
+          organization_id?: string | null
+          permite_customizacao?: boolean | null
+          tipo_grupo: string
+        }
+        Update: {
+          accounting_group?: string
+          criada_por_usuario?: boolean | null
+          efeito_caixa?: string
+          id?: string
+          natureza_contabil?: string
+          nome_simplificado?: string
+          organization_id?: string | null
+          permite_customizacao?: boolean | null
+          tipo_grupo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'categoria_simplificada_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       categories: {
         Row: {
           accounting_group: string | null
@@ -286,6 +330,68 @@ export type Database = {
           valid_until?: string | null
         }
         Relationships: []
+      }
+      dicas_contextuais: {
+        Row: {
+          categoria_simplificada_id: string | null
+          descricao: string
+          id: string
+          titulo: string
+        }
+        Insert: {
+          categoria_simplificada_id?: string | null
+          descricao: string
+          id?: string
+          titulo: string
+        }
+        Update: {
+          categoria_simplificada_id?: string | null
+          descricao?: string
+          id?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'dicas_contextuais_categoria_simplificada_id_fkey'
+            columns: ['categoria_simplificada_id']
+            isOneToOne: false
+            referencedRelation: 'categoria_simplificada'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      dicas_lidas: {
+        Row: {
+          dica_id: string | null
+          id: string
+          organization_id: string | null
+        }
+        Insert: {
+          dica_id?: string | null
+          id?: string
+          organization_id?: string | null
+        }
+        Update: {
+          dica_id?: string | null
+          id?: string
+          organization_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'dicas_lidas_dica_id_fkey'
+            columns: ['dica_id']
+            isOneToOne: false
+            referencedRelation: 'dicas_contextuais'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'dicas_lidas_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
       }
       equity_shares: {
         Row: {
@@ -1028,6 +1134,16 @@ export const Constants = {
 //   month: text (not null)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
+// Table: categoria_simplificada
+//   id: uuid (not null, default: gen_random_uuid())
+//   organization_id: uuid (nullable)
+//   nome_simplificado: character varying (not null)
+//   tipo_grupo: character varying (not null)
+//   natureza_contabil: character varying (not null)
+//   efeito_caixa: character varying (not null)
+//   accounting_group: character varying (not null)
+//   permite_customizacao: boolean (nullable, default: false)
+//   criada_por_usuario: boolean (nullable, default: false)
 // Table: categories
 //   id: uuid (not null, default: gen_random_uuid())
 //   nome: text (not null)
@@ -1055,6 +1171,15 @@ export const Constants = {
 //   is_active: boolean (not null, default: true)
 //   created_at: timestamp with time zone (not null, default: now())
 //   updated_at: timestamp with time zone (not null, default: now())
+// Table: dicas_contextuais
+//   id: uuid (not null, default: gen_random_uuid())
+//   categoria_simplificada_id: uuid (nullable)
+//   titulo: character varying (not null)
+//   descricao: text (not null)
+// Table: dicas_lidas
+//   id: uuid (not null, default: gen_random_uuid())
+//   organization_id: uuid (nullable)
+//   dica_id: uuid (nullable)
 // Table: equity_shares
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (not null)
@@ -1193,6 +1318,9 @@ export const Constants = {
 // Table: budgets
 //   FOREIGN KEY budgets_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY budgets_pkey: PRIMARY KEY (id)
+// Table: categoria_simplificada
+//   FOREIGN KEY categoria_simplificada_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+//   PRIMARY KEY categoria_simplificada_pkey: PRIMARY KEY (id)
 // Table: categories
 //   UNIQUE categories_nome_tipo_unique: UNIQUE (nome, tipo)
 //   PRIMARY KEY categories_pkey: PRIMARY KEY (id)
@@ -1206,6 +1334,14 @@ export const Constants = {
 //   UNIQUE coupons_code_key: UNIQUE (code)
 //   CHECK coupons_discount_type_check: CHECK ((discount_type = ANY (ARRAY['PERCENTAGE'::text, 'FIXED'::text])))
 //   PRIMARY KEY coupons_pkey: PRIMARY KEY (id)
+// Table: dicas_contextuais
+//   FOREIGN KEY dicas_contextuais_categoria_simplificada_id_fkey: FOREIGN KEY (categoria_simplificada_id) REFERENCES categoria_simplificada(id) ON DELETE CASCADE
+//   PRIMARY KEY dicas_contextuais_pkey: PRIMARY KEY (id)
+// Table: dicas_lidas
+//   FOREIGN KEY dicas_lidas_dica_id_fkey: FOREIGN KEY (dica_id) REFERENCES dicas_contextuais(id) ON DELETE CASCADE
+//   UNIQUE dicas_lidas_organization_id_dica_id_key: UNIQUE (organization_id, dica_id)
+//   FOREIGN KEY dicas_lidas_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+//   PRIMARY KEY dicas_lidas_pkey: PRIMARY KEY (id)
 // Table: equity_shares
 //   FOREIGN KEY equity_shares_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   CHECK equity_shares_percentage_check: CHECK (((percentage >= (0)::numeric) AND (percentage <= (100)::numeric)))
@@ -1277,6 +1413,11 @@ export const Constants = {
 //     USING: (organization_id = get_current_user_org_id())
 //   Policy "Users can view budgets in their org" (SELECT, PERMISSIVE) roles={public}
 //     USING: (organization_id = get_current_user_org_id())
+// Table: categoria_simplificada
+//   Policy "Public read global categorias_simplificada" (SELECT, PERMISSIVE) roles={public}
+//     USING: ((organization_id IS NULL) OR (organization_id = get_current_user_org_id()))
+//   Policy "Users can insert categorias_simplificada" (INSERT, PERMISSIVE) roles={public}
+//     WITH CHECK: (organization_id = get_current_user_org_id())
 // Table: categories
 //   Policy "authenticated_select_categories" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -1290,6 +1431,14 @@ export const Constants = {
 //     USING: true
 //   Policy "SuperAdmin manage coupons" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: is_super_admin()
+// Table: dicas_contextuais
+//   Policy "Public read dicas_contextuais" (SELECT, PERMISSIVE) roles={public}
+//     USING: true
+// Table: dicas_lidas
+//   Policy "Users can insert dicas_lidas" (INSERT, PERMISSIVE) roles={public}
+//     WITH CHECK: (organization_id = get_current_user_org_id())
+//   Policy "Users can read dicas_lidas" (SELECT, PERMISSIVE) roles={public}
+//     USING: (organization_id = get_current_user_org_id())
 // Table: equity_shares
 //   Policy "Users can delete equity in their org" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: (organization_id = get_current_user_org_id())
@@ -1880,6 +2029,8 @@ export const Constants = {
 //   CREATE UNIQUE INDEX categories_nome_tipo_unique ON public.categories USING btree (nome, tipo)
 // Table: coupons
 //   CREATE UNIQUE INDEX coupons_code_key ON public.coupons USING btree (code)
+// Table: dicas_lidas
+//   CREATE UNIQUE INDEX dicas_lidas_organization_id_dica_id_key ON public.dicas_lidas USING btree (organization_id, dica_id)
 // Table: plans
 //   CREATE UNIQUE INDEX plans_name_key ON public.plans USING btree (name)
 // Table: subscriptions
