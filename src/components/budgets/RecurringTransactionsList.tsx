@@ -121,16 +121,26 @@ export function RecurringTransactionsList() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center bg-white p-6 rounded-3xl border shadow-sm">
-        <div>
-          <h2 className="text-lg font-bold text-gray-900">Meus Gastos Fixos</h2>
-          <p className="text-sm text-gray-500">
-            Adicione e acompanhe despesas que se repetem automaticamente.
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 text-primary rounded-xl hidden sm:flex">
+            <RepeatIcon className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <RepeatIcon className="w-5 h-5 text-primary sm:hidden" />
+              <h2 className="text-lg font-bold text-gray-900">
+                Gastos Fixos & Assinaturas
+              </h2>
+            </div>
+            <p className="text-sm text-gray-500">
+              Adicione e acompanhe despesas que se repetem automaticamente.
+            </p>
+          </div>
         </div>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button className="rounded-full gap-2 w-full sm:w-auto">
-              <Plus className="w-4 h-4" /> Novo Gasto Fixo
+              <Plus className="w-4 h-4" /> Novo Gasto
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
@@ -239,9 +249,9 @@ export function RecurringTransactionsList() {
           <Loader2 className="w-8 h-8 animate-spin text-gray-300" />
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">
           {recurring.length === 0 ? (
-            <div className="bg-white rounded-3xl p-10 border shadow-sm text-center">
+            <div className="p-10 text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 mb-4">
                 <RepeatIcon className="w-8 h-8 text-gray-400" />
               </div>
@@ -254,70 +264,68 @@ export function RecurringTransactionsList() {
               </p>
             </div>
           ) : (
-            recurring.map((r) => {
-              const categoryName =
-                categories.find((c) => c.id === r.category)?.nome ||
-                'Desconhecida'
-              return (
-                <div
-                  key={r.id}
-                  className="bg-white rounded-2xl p-4 sm:p-5 border shadow-sm hover:shadow-md transition-all group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full"
-                >
-                  <div className="flex items-center gap-4 flex-1 w-full">
-                    <div className="p-3 bg-primary/5 text-primary rounded-xl shrink-0 hidden sm:flex">
-                      <RepeatIcon className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3
-                        className="font-bold text-gray-900 text-base truncate"
-                        title={r.description}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-50/50 text-gray-500 border-b border-gray-100">
+                  <tr>
+                    <th className="px-6 py-4 font-medium">Descrição</th>
+                    <th className="px-6 py-4 font-medium">Categoria</th>
+                    <th className="px-6 py-4 font-medium">Frequência</th>
+                    <th className="px-6 py-4 font-medium">Próxima Data</th>
+                    <th className="px-6 py-4 font-medium text-right">Valor</th>
+                    <th className="px-6 py-4 font-medium text-center w-[80px]">
+                      Ações
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {recurring.map((r) => {
+                    const categoryName =
+                      categories.find((c) => c.id === r.category)?.nome ||
+                      'Desconhecida'
+                    return (
+                      <tr
+                        key={r.id}
+                        className="hover:bg-gray-50/50 transition-colors group"
                       >
-                        {r.description}
-                      </h3>
-                      <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-gray-500">
-                        <span className="flex items-center gap-1.5 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100">
-                          <Tag className="w-3.5 h-3.5 text-gray-400" />
-                          <span className="font-medium truncate max-w-[120px]">
+                        <td className="px-6 py-4 font-medium text-gray-900">
+                          {r.description}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
                             {categoryName}
                           </span>
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <CreditCard className="w-3.5 h-3.5 text-gray-400" />
+                        </td>
+                        <td className="px-6 py-4 text-gray-600">
                           {frequencyLabel(r.frequency)}
-                        </span>
-                        <span className="hidden sm:inline text-gray-300">
-                          •
-                        </span>
-                        <span className="flex items-center gap-1.5 text-primary/90 font-medium">
-                          <Calendar className="w-3.5 h-3.5" />
-                          Próx:{' '}
-                          {format(new Date(r.next_date), "dd 'de' MMMM", {
+                        </td>
+                        <td className="px-6 py-4 text-gray-600">
+                          {format(new Date(r.next_date), "dd 'de' MMM, yyyy", {
                             locale: ptBR,
                           })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between w-full sm:w-auto gap-4 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-50">
-                    <div className="text-lg font-bold text-gray-900 whitespace-nowrap">
-                      R${' '}
-                      {r.amount.toLocaleString('pt-BR', {
-                        minimumFractionDigits: 2,
-                      })}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(r.id)}
-                      className="text-gray-400 hover:text-red-500 hover:bg-red-50 h-9 w-9 shrink-0"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              )
-            })
+                        </td>
+                        <td className="px-6 py-4 text-right font-semibold text-red-600 whitespace-nowrap">
+                          - R${' '}
+                          {r.amount.toLocaleString('pt-BR', {
+                            minimumFractionDigits: 2,
+                          })}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(r.id)}
+                            className="text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-600 hover:bg-red-50 h-8 w-8 transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
