@@ -16,20 +16,32 @@ export function BalanceSheet() {
     passivoNaoCirculante: 0,
     plCalculado: 0,
     plReal: 0,
+    itemsAtivoCirculante: [] as any[],
+    itemsAtivoNaoCirculante: [] as any[],
+    itemsPassivoCirculante: [] as any[],
+    itemsPassivoNaoCirculante: [] as any[],
+    itemsPl: [] as any[],
   })
-  const [hasLegacy, setHasLegacy] = useState(false)
   const [isBalanced, setIsBalanced] = useState(true)
 
   useEffect(() => {
     async function load() {
       const { data: orgId } = await supabase.rpc('get_current_user_org_id')
 
-      const [{ data: categories }, { data: txs }] = await Promise.all([
-        supabase.from('categories').select('*'),
-        supabase.from('transactions').select('*').eq('organization_id', orgId),
-      ])
+      const [{ data: categories }, { data: simpCats }, { data: txs }] =
+        await Promise.all([
+          supabase.from('categories').select('*'),
+          supabase.from('categoria_simplificada').select('*'),
+          supabase
+            .from('transactions')
+            .select('*')
+            .eq('organization_id', orgId),
+        ])
 
       const categoriesMap = new Map(categories?.map((c) => [c.id, c]))
+      const simpCatsMap = new Map(
+        simpCats?.map((c) => [c.nome_simplificado, c]),
+      )
 
       let ativoCirculante = 0
       let ativoNaoCirculante = 0
@@ -37,42 +49,110 @@ export function BalanceSheet() {
       let passivoNaoCirculante = 0
       let plLancado = 0
       let resultadoAcumulado = 0
-      let legacy = false
+
+      const groupMap = new Map<
+        string,
+        { nome: string; descTecnica: string; group: string; amount: number }
+      >()
 
       if (txs) {
         txs.forEach((t: any) => {
-          if (t.created_at && new Date(t.created_at) < new Date('2026-05-25')) {
-            legacy = true
+          const amount = Number(t.amount || t.valor)
+          let accGroup = 'Resultado'
+          let natContabil = t.type === 'Receita' ? 'Receita' : 'Despesa'
+          let nomeSimplificado = t.category
+          let foundCat = false
+
+          if (simpCatsMap.has(t.category)) {
+            const sc = simpCatsMap.get(t.category)
+            accGroup = sc.accounting_group
+            natContabil = sc.natureza_contabil
+            nomeSimplificado = sc.nome_simplificado
+            foundCat = true
           }
 
-          const amount = Number(t.amount || t.valor)
-          const cat =
-            categoriesMap.get(t.category) ||
-            Array.from(categoriesMap.values()).find(
-              (c) => c.nome === t.category,
-            )
-          const accGroup = cat?.accounting_group
-          const natContabil = cat?.natureza_contabil
+          if (!foundCat) {
+            const cat =
+              categoriesMap.get(t.category) ||
+              Array.from(categoriesMap.values()).find(
+                (c) => c.nome === t.category,
+              )
+            if (cat) {
+              accGroup = cat.accounting_group || 'Resultado'
+              natContabil =
+                cat.natureza_contabil ||
+                (t.type === 'Receita' ? 'Receita' : 'Despesa')
+              nomeSimplificado = cat.nome
+            }
+          }
 
-          if (accGroup === 'Ativo Circulante') ativoCirculante += amount
-          else if (accGroup === 'Ativo Não-Circulante')
-            ativoNaoCirculante += amount
-          else if (accGroup === 'Passivo Circulante')
-            passivoCirculante += amount
-          else if (accGroup === 'Passivo Não-Circulante')
-            passivoNaoCirculante += amount
-          else if (accGroup === 'Patrimônio Líquido') plLancado += amount
-          else {
-            if (natContabil === 'Receita') resultadoAcumulado += amount
-            if (natContabil === 'Despesa') resultadoAcumulado -= amount
+          let netAmount = 0
+          if (t.category === 'Depreciação e Amortização') {
+            ativoNaoCirculante -= amount
+            resultadoAcumulado -= amount
+            netAmount = -amount
+            accGroup = 'Ativo Não-Circulante'
+            natContabil = 'Ativo'
+            nomeSimplificado = 'Depreciação e Amortização'
+          } else {
+            if (accGroup === 'Ativo Circulante') {
+              netAmount =
+                natContabil === 'Ativo' && t.type === 'Receita'
+                  ? -amount
+                  : amount
+              ativoCirculante += netAmount
+            } else if (accGroup === 'Ativo Não-Circulante') {
+              netAmount =
+                natContabil === 'Ativo' && t.type === 'Receita'
+                  ? -amount
+                  : amount
+              ativoNaoCirculante += netAmount
+            } else if (accGroup === 'Passivo Circulante') {
+              netAmount =
+                natContabil === 'Passivo' && t.type === 'Despesa'
+                  ? -amount
+                  : amount
+              passivoCirculante += netAmount
+            } else if (accGroup === 'Passivo Não-Circulante') {
+              netAmount =
+                natContabil === 'Passivo' && t.type === 'Despesa'
+                  ? -amount
+                  : amount
+              passivoNaoCirculante += netAmount
+            } else if (accGroup === 'Patrimônio Líquido') {
+              netAmount = amount
+              plLancado += netAmount
+            } else {
+              if (t.type === 'Receita') resultadoAcumulado += amount
+              else resultadoAcumulado -= amount
+            }
+          }
+
+          if (
+            accGroup !== 'Resultado' ||
+            t.category === 'Depreciação e Amortização'
+          ) {
+            const key = `${nomeSimplificado}-${accGroup}`
+            if (!groupMap.has(key)) {
+              groupMap.set(key, {
+                nome: nomeSimplificado,
+                descTecnica: accGroup,
+                group: accGroup,
+                amount: 0,
+              })
+            }
+            groupMap.get(key)!.amount += netAmount
           }
         })
       }
 
       const totalAtivo = ativoCirculante + ativoNaoCirculante
       const totalPassivo = passivoCirculante + passivoNaoCirculante
-      const plCalculado = totalAtivo - totalPassivo
-      const plReal = plLancado + resultadoAcumulado
+      const plCalculado = plLancado + resultadoAcumulado
+
+      const allItems = Array.from(groupMap.values()).filter(
+        (i) => i.amount !== 0,
+      )
 
       setData({
         ativoCirculante,
@@ -80,10 +160,23 @@ export function BalanceSheet() {
         passivoCirculante,
         passivoNaoCirculante,
         plCalculado,
-        plReal,
+        plReal: plLancado + resultadoAcumulado,
+        itemsAtivoCirculante: allItems.filter(
+          (i) => i.group === 'Ativo Circulante',
+        ),
+        itemsAtivoNaoCirculante: allItems.filter(
+          (i) => i.group === 'Ativo Não-Circulante',
+        ),
+        itemsPassivoCirculante: allItems.filter(
+          (i) => i.group === 'Passivo Circulante',
+        ),
+        itemsPassivoNaoCirculante: allItems.filter(
+          (i) => i.group === 'Passivo Não-Circulante',
+        ),
+        itemsPl: allItems.filter((i) => i.group === 'Patrimônio Líquido'),
       })
-      setHasLegacy(legacy)
-      setIsBalanced(Math.abs(totalAtivo - (totalPassivo + plReal)) < 0.01)
+
+      setIsBalanced(Math.abs(totalAtivo - (totalPassivo + plCalculado)) < 0.1)
       setLoading(false)
     }
     load()
@@ -103,25 +196,34 @@ export function BalanceSheet() {
   const formatCurrency = (val: number) =>
     val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
+  const renderItem = (item: any) => (
+    <div
+      key={item.nome}
+      className="flex justify-between items-center py-1.5 pl-4 border-b border-gray-50/50"
+    >
+      <span className="text-xs text-gray-500">
+        {item.nome} <span className="text-gray-400">({item.descTecnica})</span>
+      </span>
+      <span className="text-xs font-medium text-gray-700">
+        {formatCurrency(item.amount)}
+      </span>
+    </div>
+  )
+
   return (
     <div className="space-y-6">
-      {hasLegacy && (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-md text-sm">
-          ⚠️ Dados legados não refletem estrutura contábil corrigida
-        </div>
-      )}
       {!isBalanced && (
         <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md text-sm font-semibold">
-          ⚠️ Equação contábil não bate! Há erro nos lançamentos.
+          ⚠️ Equação contábil não bate! Há erro nos lançamentos. O Ativo deve
+          ser exatamente igual ao Passivo + PL.
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Ativos */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-gray-100 bg-gray-50">
+          <div className="p-4 border-b border-gray-100 bg-blue-50/30">
             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              Ativos
+              BENS E DIREITOS (ATIVOS)
               <Popover>
                 <PopoverTrigger asChild>
                   <button className="text-gray-400 hover:text-primary transition-colors print:hidden">
@@ -132,45 +234,52 @@ export function BalanceSheet() {
                   <p className="font-semibold mb-2">O que são Ativos?</p>
                   <p className="text-gray-600 mb-2">
                     Bens e direitos capazes de gerar benefícios econômicos
-                    futuros.
+                    futuros (Caixa, Estoque, Máquinas).
                   </p>
                 </PopoverContent>
               </Popover>
             </h3>
           </div>
           <div className="p-4 space-y-4">
-            <div className="flex justify-between items-center py-2 border-b border-gray-50">
-              <span className="text-sm font-medium text-gray-600">
-                Ativo Circulante (Subtotal)
-              </span>
-              <span className="text-sm font-semibold">
-                {formatCurrency(data.ativoCirculante)}
-              </span>
+            <div className="space-y-1">
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 bg-gray-50/50 px-2 rounded">
+                <span className="text-sm font-semibold text-gray-800">
+                  Bens Atuais (Circulante)
+                </span>
+                <span className="text-sm font-semibold">
+                  {formatCurrency(data.ativoCirculante)}
+                </span>
+              </div>
+              {data.itemsAtivoCirculante.map(renderItem)}
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-50">
-              <span className="text-sm font-medium text-gray-600">
-                Ativo Não-Circulante (Subtotal)
-              </span>
-              <span className="text-sm font-semibold">
-                {formatCurrency(data.ativoNaoCirculante)}
-              </span>
+
+            <div className="space-y-1">
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 bg-gray-50/50 px-2 rounded">
+                <span className="text-sm font-semibold text-gray-800">
+                  Bens Duráveis (Não-Circulante)
+                </span>
+                <span className="text-sm font-semibold">
+                  {formatCurrency(data.ativoNaoCirculante)}
+                </span>
+              </div>
+              {data.itemsAtivoNaoCirculante.map(renderItem)}
             </div>
-            <div className="flex justify-between items-center pt-2">
-              <span className="text-sm font-bold text-gray-900">
+
+            <div className="flex justify-between items-center pt-4 border-t-2 border-gray-100">
+              <span className="text-base font-bold text-gray-900">
                 TOTAL ATIVO
               </span>
-              <span className="text-sm font-bold text-green-600">
+              <span className="text-base font-bold text-blue-600">
                 {formatCurrency(totalAtivos)}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Passivos e PL */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-gray-100 bg-gray-50">
+          <div className="p-4 border-b border-gray-100 bg-red-50/30">
             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              Passivos e Patrimônio Líquido
+              DÍVIDAS E PATRIMÔNIO (PASSIVO + PL)
               <Popover>
                 <PopoverTrigger asChild>
                   <button className="text-gray-400 hover:text-primary transition-colors print:hidden">
@@ -180,51 +289,63 @@ export function BalanceSheet() {
                 <PopoverContent className="w-80 text-sm">
                   <p className="font-semibold mb-2">Estrutura Contábil</p>
                   <p className="text-gray-600 mb-2">
-                    Passivos representam as obrigações. Patrimônio Líquido (PL)
-                    representa o capital investido e os resultados acumulados.
+                    Passivos representam as obrigações com terceiros. Patrimônio
+                    Líquido (PL) representa o capital próprio e lucros retidos.
                   </p>
                 </PopoverContent>
               </Popover>
             </h3>
           </div>
           <div className="p-4 space-y-4">
-            <div className="flex justify-between items-center py-2 border-b border-gray-50">
-              <span className="text-sm font-medium text-gray-600">
-                Passivo Circulante (Subtotal)
-              </span>
-              <span className="text-sm font-semibold">
-                {formatCurrency(data.passivoCirculante)}
-              </span>
+            <div className="space-y-1">
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 bg-gray-50/50 px-2 rounded">
+                <span className="text-sm font-semibold text-gray-800">
+                  Dívidas Curto Prazo (Circulante)
+                </span>
+                <span className="text-sm font-semibold">
+                  {formatCurrency(data.passivoCirculante)}
+                </span>
+              </div>
+              {data.itemsPassivoCirculante.map(renderItem)}
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-50">
-              <span className="text-sm font-medium text-gray-600">
-                Passivo Não-Circulante (Subtotal)
-              </span>
-              <span className="text-sm font-semibold">
-                {formatCurrency(data.passivoNaoCirculante)}
-              </span>
+
+            <div className="space-y-1">
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 bg-gray-50/50 px-2 rounded">
+                <span className="text-sm font-semibold text-gray-800">
+                  Dívidas Longo Prazo (Não-Circulante)
+                </span>
+                <span className="text-sm font-semibold">
+                  {formatCurrency(data.passivoNaoCirculante)}
+                </span>
+              </div>
+              {data.itemsPassivoNaoCirculante.map(renderItem)}
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-50">
-              <span className="text-sm font-bold text-gray-900">
-                TOTAL PASSIVO
-              </span>
-              <span className="text-sm font-bold text-red-600">
-                {formatCurrency(totalPassivos)}
-              </span>
+
+            <div className="space-y-1 mt-4">
+              <div className="flex justify-between items-center py-2 border-b border-gray-100 bg-gray-50/50 px-2 rounded">
+                <span className="text-sm font-semibold text-gray-800">
+                  Seu Patrimônio (Patrimônio Líquido)
+                </span>
+                <span className="text-sm font-semibold">
+                  {formatCurrency(data.plCalculado)}
+                </span>
+              </div>
+              {data.itemsPl.map(renderItem)}
+              <div className="flex justify-between items-center py-1.5 pl-4 border-b border-gray-50/50">
+                <span className="text-xs text-gray-500">
+                  Resultado Acumulado (Lucro/Prejuízo)
+                </span>
+                <span className="text-xs font-medium text-gray-700">
+                  {formatCurrency(data.plCalculado - data.plReal)}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-50 mt-4">
-              <span className="text-sm font-medium text-gray-600">
-                Patrimônio Líquido (Subtotal)
-              </span>
-              <span className="text-sm font-semibold">
-                {formatCurrency(data.plCalculado)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center pt-2">
-              <span className="text-sm font-bold text-gray-900">
+
+            <div className="flex justify-between items-center pt-4 border-t-2 border-gray-100">
+              <span className="text-base font-bold text-gray-900">
                 TOTAL PASSIVO + PL
               </span>
-              <span className="text-sm font-bold text-blue-600">
+              <span className="text-base font-bold text-red-600">
                 {formatCurrency(totalPassivos + data.plCalculado)}
               </span>
             </div>

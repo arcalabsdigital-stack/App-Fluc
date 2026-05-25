@@ -177,24 +177,30 @@ export type Database = {
         Row: {
           accounting_group: string | null
           created_at: string
+          efeito_caixa: string
           grupo: string
           id: string
+          natureza_contabil: string
           nome: string
           tipo: string
         }
         Insert: {
           accounting_group?: string | null
           created_at?: string
+          efeito_caixa?: string
           grupo: string
           id?: string
+          natureza_contabil?: string
           nome: string
           tipo: string
         }
         Update: {
           accounting_group?: string | null
           created_at?: string
+          efeito_caixa?: string
           grupo?: string
           id?: string
+          natureza_contabil?: string
           nome?: string
           tipo?: string
         }
@@ -1029,6 +1035,8 @@ export const Constants = {
 //   grupo: text (not null)
 //   created_at: timestamp with time zone (not null, default: now())
 //   accounting_group: text (nullable)
+//   natureza_contabil: character varying (not null, default: 'Despesa'::character varying)
+//   efeito_caixa: character varying (not null, default: 'Sem_efeito'::character varying)
 // Table: coupon_redemptions
 //   id: uuid (not null, default: gen_random_uuid())
 //   coupon_id: uuid (not null)

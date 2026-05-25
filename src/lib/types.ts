@@ -24,6 +24,28 @@ export interface Categoria {
   accounting_group?: string
 }
 
+export interface CategoriaSimplificada {
+  id: string
+  organization_id?: string
+  nome_simplificado: string
+  tipo_grupo: string
+  natureza_contabil: string
+  efeito_caixa: string
+  accounting_group: string
+}
+
+export interface DicaContextual {
+  id: string
+  categoria_simplificada_id: string
+  titulo: string
+  descricao: string
+}
+
+export interface DicaLida {
+  id: string
+  dica_id: string
+}
+
 export interface Transacao {
   id: string
   data: Date

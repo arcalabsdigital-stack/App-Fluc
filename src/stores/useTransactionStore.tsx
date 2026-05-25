@@ -5,32 +5,83 @@ import { transactionService } from '@/services/transactionService'
 import { ReactNode, useEffect } from 'react'
 import { FilterState } from '@/components/transactions/TransactionFilters'
 
+import { CategoriaSimplificada, DicaContextual } from '@/lib/types'
+
 interface TransactionStore {
   transactions: Transacao[]
   categories: Categoria[]
+  categoriasSimplificadas: CategoriaSimplificada[]
+  dicas: DicaContextual[]
+  dicasLidas: string[]
   isLoading: boolean
   fetchCategories: () => Promise<void>
   fetchTransactions: (filters: FilterState, role: string) => Promise<void>
   addTransaction: (t: Omit<Transacao, 'id'>) => Promise<void>
   updateTransaction: (id: string, t: Partial<Transacao>) => Promise<void>
   deleteTransaction: (id: string) => Promise<void>
+  addCategoriaSimplificada: (
+    cat: Partial<CategoriaSimplificada>,
+  ) => Promise<CategoriaSimplificada | null>
+  markDicaLida: (dicaId: string) => Promise<void>
 }
 
-const useTransactionStore = create<TransactionStore>((set) => ({
+const useTransactionStore = create<TransactionStore>((set, get) => ({
   transactions: [],
   categories: [],
+  categoriasSimplificadas: [],
+  dicas: [],
+  dicasLidas: [],
   isLoading: false,
   fetchCategories: async () => {
+    const [
+      { data: categories },
+      { data: catSimp },
+      { data: dicas },
+      { data: lidas },
+    ] = await Promise.all([
+      supabase.from('categories').select('*').order('grupo').order('nome'),
+      supabase
+        .from('categoria_simplificada')
+        .select('*')
+        .order('nome_simplificado'),
+      supabase.from('dicas_contextuais').select('*'),
+      supabase.from('dicas_lidas').select('dica_id'),
+    ])
+
+    set({
+      categories: (categories || []) as Categoria[],
+      categoriasSimplificadas: (catSimp || []) as CategoriaSimplificada[],
+      dicas: (dicas || []) as DicaContextual[],
+      dicasLidas: (lidas || []).map((l) => l.dica_id),
+    })
+  },
+  addCategoriaSimplificada: async (cat) => {
+    const { data: orgIdRes } = await supabase.rpc('get_current_user_org_id')
     const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .order('grupo')
-      .order('nome')
-    if (error) {
-      console.error('Error fetching categories:', error)
-      return
+      .from('categoria_simplificada')
+      .insert({
+        ...cat,
+        organization_id: orgIdRes,
+        criada_por_usuario: true,
+        permite_customizacao: true,
+      })
+      .select()
+      .single()
+
+    if (data) {
+      set((state) => ({
+        categoriasSimplificadas: [...state.categoriasSimplificadas, data],
+      }))
+      return data as CategoriaSimplificada
     }
-    set({ categories: data as Categoria[] })
+    return null
+  },
+  markDicaLida: async (dicaId) => {
+    const { data: orgIdRes } = await supabase.rpc('get_current_user_org_id')
+    await supabase
+      .from('dicas_lidas')
+      .insert({ organization_id: orgIdRes, dica_id: dicaId })
+    set((state) => ({ dicasLidas: [...state.dicasLidas, dicaId] }))
   },
   fetchTransactions: async (filters, role) => {
     set({ isLoading: true })
