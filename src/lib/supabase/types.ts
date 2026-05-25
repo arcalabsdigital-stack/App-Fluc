@@ -281,6 +281,41 @@ export type Database = {
         }
         Relationships: []
       }
+      equity_shares: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          partner_name: string
+          percentage: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          partner_name: string
+          percentage: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          partner_name?: string
+          percentage?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'equity_shares_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string | null
@@ -1012,6 +1047,13 @@ export const Constants = {
 //   is_active: boolean (not null, default: true)
 //   created_at: timestamp with time zone (not null, default: now())
 //   updated_at: timestamp with time zone (not null, default: now())
+// Table: equity_shares
+//   id: uuid (not null, default: gen_random_uuid())
+//   organization_id: uuid (not null)
+//   partner_name: text (not null)
+//   percentage: numeric (not null)
+//   created_at: timestamp with time zone (not null, default: now())
+//   updated_at: timestamp with time zone (not null, default: now())
 // Table: notifications
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (not null)
@@ -1156,6 +1198,10 @@ export const Constants = {
 //   UNIQUE coupons_code_key: UNIQUE (code)
 //   CHECK coupons_discount_type_check: CHECK ((discount_type = ANY (ARRAY['PERCENTAGE'::text, 'FIXED'::text])))
 //   PRIMARY KEY coupons_pkey: PRIMARY KEY (id)
+// Table: equity_shares
+//   FOREIGN KEY equity_shares_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+//   CHECK equity_shares_percentage_check: CHECK (((percentage >= (0)::numeric) AND (percentage <= (100)::numeric)))
+//   PRIMARY KEY equity_shares_pkey: PRIMARY KEY (id)
 // Table: notifications
 //   FOREIGN KEY notifications_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY notifications_pkey: PRIMARY KEY (id)
@@ -1236,13 +1282,24 @@ export const Constants = {
 //     USING: true
 //   Policy "SuperAdmin manage coupons" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: is_super_admin()
-// Table: notifications
-//   Policy "Users can insert notifications" (INSERT, PERMISSIVE) roles={public}
+// Table: equity_shares
+//   Policy "Users can delete equity in their org" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id = get_current_user_org_id())
+//   Policy "Users can insert equity in their org" (INSERT, PERMISSIVE) roles={authenticated}
 //     WITH CHECK: (organization_id = get_current_user_org_id())
-//   Policy "Users can update their notifications" (UPDATE, PERMISSIVE) roles={public}
-//     USING: (user_id = auth.uid())
-//   Policy "Users can view their notifications" (SELECT, PERMISSIVE) roles={public}
-//     USING: (user_id = auth.uid())
+//   Policy "Users can update equity in their org" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id = get_current_user_org_id())
+//   Policy "Users can view equity in their org" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id = get_current_user_org_id())
+// Table: notifications
+//   Policy "Users can delete their notifications" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: ((user_id = auth.uid()) OR (organization_id = get_current_user_org_id()))
+//   Policy "Users can insert notifications" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (organization_id = get_current_user_org_id())
+//   Policy "Users can update their notifications" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: ((user_id = auth.uid()) OR (organization_id = get_current_user_org_id()))
+//   Policy "Users can view their notifications" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: ((user_id = auth.uid()) OR (organization_id = get_current_user_org_id()))
 // Table: organizations
 //   Policy "Admins can update their organization" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (id IN ( SELECT get_auth_admin_workspaces() AS get_auth_admin_workspaces))

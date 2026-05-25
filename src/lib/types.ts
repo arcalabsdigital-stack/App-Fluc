@@ -19,6 +19,9 @@ export interface Categoria {
   nome: string
   tipo: string
   grupo: string
+  natureza_contabil?: string
+  efeito_caixa?: string
+  accounting_group?: string
 }
 
 export interface Transacao {

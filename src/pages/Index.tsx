@@ -8,6 +8,7 @@ import { BudgetsProgress } from '@/components/dashboard/BudgetsProgress'
 import { ComparativeChart } from '@/components/dashboard/ComparativeChart'
 import { CashFlowProjection } from '@/components/dashboard/CashFlowProjection'
 import { BreakevenCard } from '@/components/dashboard/BreakevenCard'
+import { UpcomingTransactions } from '@/components/dashboard/UpcomingTransactions'
 import { KPIMetric } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -201,6 +202,8 @@ const Index = () => {
           </Button>
         </div>
       </div>
+
+      <UpcomingTransactions />
 
       {/* KPI Row */}
       <div

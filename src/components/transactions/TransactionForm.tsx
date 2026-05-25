@@ -331,8 +331,12 @@ export function TransactionForm({
                     (c) => c.tipo === form.watch('tipo_id'),
                   )
                   const grupos = Array.from(
-                    new Set(filteredCategories.map((c) => c.grupo)),
-                  )
+                    new Set(
+                      filteredCategories.map(
+                        (c) => c.natureza_contabil || c.grupo,
+                      ),
+                    ),
+                  ).sort()
 
                   return (
                     <FormItem>
@@ -352,7 +356,10 @@ export function TransactionForm({
                             <SelectGroup key={grupo}>
                               <SelectLabel>{grupo}</SelectLabel>
                               {filteredCategories
-                                .filter((c) => c.grupo === grupo)
+                                .filter(
+                                  (c) =>
+                                    (c.natureza_contabil || c.grupo) === grupo,
+                                )
                                 .map((category) => (
                                   <SelectItem
                                     key={category.id}

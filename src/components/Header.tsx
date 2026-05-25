@@ -21,6 +21,7 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
 import { CreateWorkspaceDialog } from '@/components/CreateWorkspaceDialog'
+import { NotificationsBell } from '@/components/NotificationsBell'
 import {
   Popover,
   PopoverContent,
@@ -119,14 +120,7 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-1 sm:gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="bg-white rounded-full shadow-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 relative h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0 hidden sm:flex"
-        >
-          <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-          <span className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-        </Button>
+        <NotificationsBell />
 
         <div className="h-8 w-px bg-gray-200 mx-1 sm:mx-2 hidden sm:block"></div>
 
