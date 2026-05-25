@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import {
   Plus,
   Trash2,
+  Edit,
   RepeatIcon,
   Calendar,
   Tag,
@@ -31,6 +32,8 @@ export function RecurringTransactionsList() {
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(true)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [scopeModalOpen, setScopeModalOpen] = useState(false)
 
   const [formData, setFormData] = useState({
     description: '',
@@ -60,6 +63,10 @@ export function RecurringTransactionsList() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (editId) {
+      setScopeModalOpen(true)
+      return
+    }
     if (!user || !currentWorkspace) return
     setIsLoading(true)
     try {
@@ -91,6 +98,88 @@ export function RecurringTransactionsList() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const executeEdit = async (scope: string) => {
+    if (!user || !currentWorkspace || !editId) return
+    setScopeModalOpen(false)
+    setIsLoading(true)
+    try {
+      if (scope === 'só esta') {
+        await supabase.from('transactions').insert({
+          user_id: user.id,
+          organization_id: currentWorkspace.id,
+          description: formData.description,
+          amount: Number(formData.amount),
+          category: formData.category,
+          type: 'Despesa',
+          payment_method: 'Outros',
+          date: formData.next_date,
+          recurring_transaction_id: editId,
+          status: 'pago',
+        })
+      } else {
+        await supabase
+          .from('recurring_transactions')
+          .update({
+            description: formData.description,
+            amount: Number(formData.amount),
+            category: formData.category,
+            frequency: formData.frequency,
+            next_date: formData.next_date,
+          })
+          .eq('id', editId)
+
+        if (scope === 'toda a série') {
+          await supabase
+            .from('transactions')
+            .update({
+              description: formData.description,
+              amount: Number(formData.amount),
+              category: formData.category,
+            })
+            .eq('recurring_transaction_id', editId)
+        } else {
+          await supabase
+            .from('transactions')
+            .update({
+              description: formData.description,
+              amount: Number(formData.amount),
+              category: formData.category,
+            })
+            .eq('recurring_transaction_id', editId)
+            .gte('date', formData.next_date)
+        }
+      }
+
+      toast.success('Recorrência atualizada!')
+      setIsOpen(false)
+      fetchRecurring()
+      setEditId(null)
+      setFormData({
+        description: '',
+        amount: '',
+        category: '',
+        frequency: 'monthly',
+        next_date: format(new Date(), 'yyyy-MM-dd'),
+      })
+    } catch (err) {
+      toast.error('Erro ao atualizar recorrência')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const openEdit = (r: any) => {
+    setEditId(r.id)
+    setFormData({
+      description: r.description,
+      amount: r.amount.toString(),
+      category: r.category,
+      frequency: r.frequency,
+      next_date: r.next_date,
+    })
+    setIsOpen(true)
   }
 
   const handleDelete = async (id: string) => {
@@ -137,15 +226,37 @@ export function RecurringTransactionsList() {
             </p>
           </div>
         </div>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog
+          open={isOpen}
+          onOpenChange={(val) => {
+            setIsOpen(val)
+            if (!val) setEditId(null)
+          }}
+        >
           <DialogTrigger asChild>
-            <Button className="rounded-full gap-2 w-full sm:w-auto">
+            <Button
+              className="rounded-full gap-2 w-full sm:w-auto"
+              onClick={() => {
+                setEditId(null)
+                setFormData({
+                  description: '',
+                  amount: '',
+                  category: '',
+                  frequency: 'monthly',
+                  next_date: format(new Date(), 'yyyy-MM-dd'),
+                })
+              }}
+            >
               <Plus className="w-4 h-4" /> Novo Gasto
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Adicionar Gasto Recorrente</DialogTitle>
+              <DialogTitle>
+                {editId
+                  ? 'Editar Gasto Recorrente'
+                  : 'Adicionar Gasto Recorrente'}
+              </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSave} className="space-y-4 pt-4">
               <div className="space-y-1.5">
@@ -311,14 +422,24 @@ export function RecurringTransactionsList() {
                           })}
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(r.id)}
-                            className="text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-600 hover:bg-red-50 h-8 w-8 transition-all"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEdit(r)}
+                              className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 h-8 w-8"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(r.id)}
+                              className="text-gray-400 hover:text-red-600 hover:bg-red-50 h-8 w-8"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -329,6 +450,47 @@ export function RecurringTransactionsList() {
           )}
         </div>
       )}
+
+      <Dialog open={scopeModalOpen} onOpenChange={setScopeModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Alterar transação recorrente</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-gray-700">
+            Como deseja aplicar esta alteração na recorrência?
+          </div>
+          <DialogFooter className="flex flex-col gap-2 sm:flex-col mt-4">
+            <Button
+              variant="outline"
+              className="w-full justify-start text-left font-normal"
+              onClick={() => executeEdit('só esta')}
+            >
+              só esta
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start text-left font-normal"
+              onClick={() => executeEdit('esta e as futuras')}
+            >
+              esta e as futuras
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start text-left font-normal"
+              onClick={() => executeEdit('toda a série')}
+            >
+              toda a série
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full mt-2"
+              onClick={() => setScopeModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

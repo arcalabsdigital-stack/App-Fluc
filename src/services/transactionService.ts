@@ -1,7 +1,14 @@
 import { supabase } from '@/lib/supabase/client'
 import { FilterState } from '@/components/transactions/TransactionFilters'
 import { Transacao, TipoTransacao, FormaPagamento, Role } from '@/lib/types'
-import { format, addMonths } from 'date-fns'
+import {
+  format,
+  addMonths,
+  addDays,
+  addYears,
+  isSameMonth,
+  isSameDay,
+} from 'date-fns'
 
 const parseLocalDate = (dateStr: string) => {
   if (!dateStr) return new Date()
@@ -104,7 +111,171 @@ export const transactionService = {
       throw error
     }
 
-    return data.map(mapToTransacao)
+    let transactions = data.map(mapToTransacao)
+
+    if (role === 'admin') {
+      let recQuery = supabase.from('recurring_transactions').select('*')
+      if (filters.search)
+        recQuery = recQuery.ilike('description', `%${filters.search}%`)
+      if (filters.type !== 'all') recQuery = recQuery.eq('type', filters.type)
+      if (filters.category !== 'all')
+        recQuery = recQuery.eq('category', filters.category)
+      if (filters.paymentMethod !== 'all')
+        recQuery = recQuery.eq('payment_method', filters.paymentMethod)
+
+      const { data: recData } = await recQuery
+
+      if (recData && recData.length > 0) {
+        const projected: Transacao[] = []
+        const now = new Date()
+        const ninetyDays = addDays(now, 90)
+
+        for (const rec of recData) {
+          let currDate = parseLocalDate(rec.next_date)
+
+          while (currDate <= ninetyDays) {
+            let exists = false
+            if (rec.frequency === 'monthly') {
+              exists = transactions.some(
+                (t) =>
+                  t.recurring_transaction_id === rec.id &&
+                  isSameMonth(t.data, currDate),
+              )
+            } else {
+              exists = transactions.some(
+                (t) =>
+                  t.recurring_transaction_id === rec.id &&
+                  isSameDay(t.data, currDate),
+              )
+            }
+
+            if (!exists) {
+              projected.push({
+                id: `proj_${rec.id}_${format(currDate, 'yyyy-MM-dd')}`,
+                data: currDate,
+                descricao: rec.description,
+                valor: Number(rec.amount),
+                categoria_id: rec.category,
+                tipo_id: rec.type as TipoTransacao,
+                forma_pagamento_id: rec.payment_method as FormaPagamento,
+                observacoes: rec.notes || '',
+                recurring_transaction_id: rec.id,
+                is_recurring: true,
+                status: 'aberto',
+              })
+            }
+
+            if (rec.frequency === 'monthly') currDate = addMonths(currDate, 1)
+            else if (rec.frequency === 'weekly') currDate = addDays(currDate, 7)
+            else if (rec.frequency === 'yearly')
+              currDate = addYears(currDate, 1)
+            else break
+          }
+        }
+
+        let filteredProjected = projected
+        if (filters.status && filters.status !== 'all') {
+          filteredProjected = filteredProjected.filter(
+            (p) => p.status === filters.status,
+          )
+        }
+        if (filters.dateRange?.from) {
+          const from = filters.dateRange.from
+          const to = filters.dateRange.to || from
+          filteredProjected = filteredProjected.filter(
+            (p) => p.data >= from && p.data <= to,
+          )
+        }
+
+        transactions = [...transactions, ...filteredProjected]
+        transactions.sort((a, b) => b.data.getTime() - a.data.getTime())
+      }
+    }
+
+    return transactions
+  },
+
+  async updateTransactionScope(
+    id: string,
+    transaction: Partial<Transacao>,
+    scope: string,
+  ) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error('User not authenticated')
+
+    const isProj = id.startsWith('proj_')
+
+    if (scope === 'só esta') {
+      if (isProj) {
+        const { id: _, ...txWithoutId } = transaction as any
+        return await this.createTransaction({
+          ...txWithoutId,
+          data: transaction.data!,
+          is_recurring: false,
+          recurring_transaction_id: transaction.recurring_transaction_id,
+        })
+      } else {
+        return await this.updateTransaction(id, transaction)
+      }
+    } else if (scope === 'esta e as futuras' || scope === 'toda a série') {
+      let recurringId = transaction.recurring_transaction_id
+
+      if (!recurringId && !isProj) {
+        return await this.updateTransaction(id, transaction)
+      }
+
+      await supabase
+        .from('recurring_transactions')
+        .update({
+          description: transaction.descricao,
+          amount: transaction.valor,
+          category: transaction.categoria_id,
+          type: transaction.tipo_id,
+          payment_method: transaction.forma_pagamento_id,
+          notes: transaction.observacoes,
+        })
+        .eq('id', recurringId)
+
+      let query = supabase
+        .from('transactions')
+        .update({
+          description: transaction.descricao,
+          amount: transaction.valor,
+          category: transaction.categoria_id,
+          type: transaction.tipo_id,
+          payment_method: transaction.forma_pagamento_id,
+          notes: transaction.observacoes,
+        })
+        .eq('recurring_transaction_id', recurringId)
+
+      if (scope === 'esta e as futuras') {
+        query = query.gte(
+          'date',
+          format(transaction.data || new Date(), 'yyyy-MM-dd'),
+        )
+      }
+
+      await query
+
+      if (!isProj && transaction.status) {
+        await supabase
+          .from('transactions')
+          .update({ status: transaction.status })
+          .eq('id', id)
+      } else if (isProj && transaction.status === 'pago') {
+        const { id: _, ...txWithoutId } = transaction as any
+        await this.createTransaction({
+          ...txWithoutId,
+          data: transaction.data!,
+          is_recurring: false,
+          recurring_transaction_id: recurringId,
+          status: 'pago',
+        })
+      }
+      return null
+    }
   },
 
   async createTransaction(transaction: Omit<Transacao, 'id'>) {

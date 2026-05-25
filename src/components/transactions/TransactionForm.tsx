@@ -124,6 +124,11 @@ export function TransactionForm({
     descricao: string
   } | null>(null)
 
+  const [scopeModalOpen, setScopeModalOpen] = useState(false)
+  const [pendingValues, setPendingValues] = useState<z.infer<
+    typeof formSchema
+  > | null>(null)
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -257,6 +262,23 @@ export function TransactionForm({
   }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (
+      transactionToEdit &&
+      (transactionToEdit.recurring_transaction_id ||
+        transactionToEdit.id.startsWith('proj_') ||
+        transactionToEdit.is_recurring)
+    ) {
+      setPendingValues(values)
+      setScopeModalOpen(true)
+      return
+    }
+    await executeSubmit(values, 'single')
+  }
+
+  async function executeSubmit(
+    values: z.infer<typeof formSchema>,
+    scope: string,
+  ) {
     try {
       setIsSubmitting(true)
 
@@ -268,12 +290,27 @@ export function TransactionForm({
           : TipoTransacao.Despesa
 
       if (transactionToEdit) {
-        await updateTransaction(transactionToEdit.id, {
+        const payload = {
           ...values,
           categoria_id: categoryName,
           tipo_id: tipoId,
-        })
-        toast.success('Transação atualizada com sucesso')
+        }
+        if (scope !== 'single') {
+          await useTransactionStore.getState().updateTransactionScope(
+            transactionToEdit.id,
+            {
+              ...payload,
+              recurring_transaction_id:
+                transactionToEdit.recurring_transaction_id,
+            },
+            scope,
+          )
+          toast.success('Série recorrente atualizada')
+          window.location.reload()
+        } else {
+          await updateTransaction(transactionToEdit.id, payload)
+          toast.success('Transação atualizada com sucesso')
+        }
       } else {
         if (isAsset) {
           await addTransaction({
@@ -359,6 +396,7 @@ export function TransactionForm({
       }
       onOpenChange(false)
       form.reset()
+      setScopeModalOpen(false)
     } catch (error) {
       toast.error('Falha ao salvar transação')
     } finally {
@@ -866,6 +904,48 @@ export function TransactionForm({
               Entendi e não mostrar mais
             </Button>
             <Button onClick={() => setCurrentTip(null)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={scopeModalOpen} onOpenChange={setScopeModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Alterar transação recorrente</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-gray-700">
+            Você está editando uma transação que se repete. Como deseja aplicar
+            esta alteração?
+          </div>
+          <DialogFooter className="flex flex-col gap-2 sm:flex-col mt-4">
+            <Button
+              variant="outline"
+              className="w-full justify-start text-left font-normal"
+              onClick={() => executeSubmit(pendingValues!, 'só esta')}
+            >
+              só esta
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start text-left font-normal"
+              onClick={() => executeSubmit(pendingValues!, 'esta e as futuras')}
+            >
+              esta e as futuras
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start text-left font-normal"
+              onClick={() => executeSubmit(pendingValues!, 'toda a série')}
+            >
+              toda a série
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full mt-2"
+              onClick={() => setScopeModalOpen(false)}
+            >
+              Cancelar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

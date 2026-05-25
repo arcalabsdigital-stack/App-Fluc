@@ -18,6 +18,11 @@ interface TransactionStore {
   fetchTransactions: (filters: FilterState, role: string) => Promise<void>
   addTransaction: (t: Omit<Transacao, 'id'>) => Promise<void>
   updateTransaction: (id: string, t: Partial<Transacao>) => Promise<void>
+  updateTransactionScope: (
+    id: string,
+    t: Partial<Transacao>,
+    scope: string,
+  ) => Promise<void>
   deleteTransaction: (id: string) => Promise<void>
   addCategoriaSimplificada: (
     cat: Partial<CategoriaSimplificada>,
@@ -106,6 +111,9 @@ const useTransactionStore = create<TransactionStore>((set, get) => ({
     set((state) => ({
       transactions: state.transactions.map((t) => (t.id === id ? updated : t)),
     }))
+  },
+  updateTransactionScope: async (id, transaction, scope) => {
+    await transactionService.updateTransactionScope(id, transaction, scope)
   },
   deleteTransaction: async (id) => {
     await transactionService.deleteTransaction(id)

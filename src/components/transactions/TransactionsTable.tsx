@@ -23,10 +23,24 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Transacao, TipoTransacao } from '@/lib/types'
 import { format } from 'date-fns'
-import { Edit, Trash2, Download, Check, Clock } from 'lucide-react'
+import {
+  Edit,
+  Trash2,
+  Download,
+  Check,
+  Clock,
+  FileText,
+  FileSpreadsheet,
+} from 'lucide-react'
 import useTransactionStore from '@/stores/useTransactionStore'
 import { cn } from '@/lib/utils'
 import { ImportTransactions } from './ImportTransactions'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 interface TransactionsTableProps {
   data: Transacao[]
@@ -64,8 +78,20 @@ export function TransactionsTable({
     }).format(value)
   }
 
-  const handleExport = () => {
-    import('@/lib/exportUtils').then((m) => m.exportToCSV(data))
+  const handleExportExcel = () => {
+    const dataWithCats = data.map((t) => ({
+      ...t,
+      categoria_id: getCategoryName(t.categoria_id),
+    }))
+    import('@/lib/exportUtils').then((m) => m.exportToExcel(dataWithCats))
+  }
+
+  const handleExportPDF = () => {
+    const dataWithCats = data.map((t) => ({
+      ...t,
+      categoria_id: getCategoryName(t.categoria_id),
+    }))
+    import('@/lib/exportUtils').then((m) => m.exportToPDF(dataWithCats))
   }
 
   const handleSelectAll = (checked: boolean) => {
@@ -161,15 +187,30 @@ export function TransactionsTable({
         </div>
         <div className="flex items-center gap-2">
           {!isVisitor && <ImportTransactions onSuccess={onImportSuccess} />}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-            className="gap-2"
-          >
-            <Download className="h-4 w-4" />
-            Exportar
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Download className="h-4 w-4" />
+                Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={handleExportExcel}
+                className="cursor-pointer"
+              >
+                <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" />
+                Exportar Excel (.xlsx)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleExportPDF}
+                className="cursor-pointer"
+              >
+                <FileText className="mr-2 h-4 w-4 text-red-600" />
+                Exportar PDF (.pdf)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
