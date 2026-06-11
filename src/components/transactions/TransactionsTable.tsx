@@ -55,16 +55,9 @@ export function TransactionsTable({
   onImportSuccess,
   isVisitor = false,
 }: TransactionsTableProps) {
-  const { categories, deleteTransaction, updateTransaction } =
-    useTransactionStore()
+  const { categories, deleteTransaction } = useTransactionStore()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [isDeletingBulk, setIsDeletingBulk] = useState(false)
-
-  const handleToggleStatus = (transaction: Transacao) => {
-    if (isVisitor || !updateTransaction) return
-    const newStatus = transaction.status === 'pago' ? 'pendente' : 'pago'
-    updateTransaction(transaction.id, { status: newStatus })
-  }
 
   const getCategoryName = (id: string) => {
     const category = categories.find((c) => c.id === id)
@@ -323,28 +316,24 @@ export function TransactionsTable({
                   {transaction.forma_pagamento_id}
                 </TableCell>
                 <TableCell className="text-center lg:whitespace-nowrap">
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  <div
                     className={cn(
-                      'h-7 px-2 text-xs font-medium rounded-full transition-colors',
+                      'inline-flex items-center justify-center h-7 px-2.5 text-xs font-medium rounded-full',
                       transaction.status === 'pago'
-                        ? 'text-green-700 bg-green-50 hover:bg-green-100 hover:text-green-800'
-                        : 'text-amber-700 bg-amber-50 hover:bg-amber-100 hover:text-amber-800',
+                        ? 'text-green-700 bg-green-50'
+                        : 'text-amber-700 bg-amber-50',
                     )}
-                    onClick={() => handleToggleStatus(transaction)}
-                    disabled={isVisitor}
                   >
                     {transaction.status === 'pago' ? (
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1.5">
                         <Check className="w-3 h-3" /> Pago
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1.5">
                         <Clock className="w-3 h-3" /> Pendente
                       </span>
                     )}
-                  </Button>
+                  </div>
                 </TableCell>
                 {!isVisitor && (
                   <TableCell className="text-right lg:whitespace-nowrap sticky right-0 z-10 bg-white group-hover:bg-slate-50 shadow-[-1px_0_0_#e5e7eb] transition-colors">
