@@ -5,8 +5,19 @@ export interface BankStatementEntry {
   description: string
 }
 
-export function parseOFX(content: string): BankStatementEntry[] {
+export interface ParsedStatement {
+  entries: BankStatementEntry[]
+  balance?: number
+}
+
+export function parseOFX(content: string): ParsedStatement {
   const entries: BankStatementEntry[] = []
+
+  let balance: number | undefined
+  const balMatch = /<BALAMT>([^\s<]+)/.exec(content)
+  if (balMatch) {
+    balance = parseFloat(balMatch[1].replace(',', '.'))
+  }
   const stmtTrnRegex = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/g
   let match
 
@@ -42,10 +53,13 @@ export function parseOFX(content: string): BankStatementEntry[] {
     entries.push({ id, date, amount, description })
   }
 
-  return entries.sort((a, b) => a.date.getTime() - b.date.getTime())
+  return {
+    entries: entries.sort((a, b) => a.date.getTime() - b.date.getTime()),
+    balance,
+  }
 }
 
-export function parseCSV(content: string): BankStatementEntry[] {
+export function parseCSV(content: string): ParsedStatement {
   // Simple CSV parser for demonstration (Date, Amount, Description)
   const lines = content.split('\n')
   const entries: BankStatementEntry[] = []
@@ -94,5 +108,7 @@ export function parseCSV(content: string): BankStatementEntry[] {
     }
   }
 
-  return entries.sort((a, b) => a.date.getTime() - b.date.getTime())
+  return {
+    entries: entries.sort((a, b) => a.date.getTime() - b.date.getTime()),
+  }
 }

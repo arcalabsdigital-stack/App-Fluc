@@ -887,6 +887,7 @@ export type Database = {
         Row: {
           account_id: string | null
           amount: number
+          amount_paid: number
           category: string
           created_at: string | null
           date: string
@@ -907,6 +908,7 @@ export type Database = {
         Insert: {
           account_id?: string | null
           amount: number
+          amount_paid?: number
           category: string
           created_at?: string | null
           date: string
@@ -927,6 +929,7 @@ export type Database = {
         Update: {
           account_id?: string | null
           amount?: number
+          amount_paid?: number
           category?: string
           created_at?: string | null
           date?: string
@@ -1471,6 +1474,7 @@ export const Constants = {
 //   installment_number: integer (nullable)
 //   account_id: uuid (nullable)
 //   is_conciliated: boolean (nullable, default: false)
+//   amount_paid: numeric (not null, default: 0)
 // Table: transfers
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (not null)
@@ -1569,6 +1573,7 @@ export const Constants = {
 //   PRIMARY KEY subscriptions_pkey: PRIMARY KEY (id)
 // Table: transactions
 //   FOREIGN KEY transactions_account_id_fkey: FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE RESTRICT
+//   CHECK transactions_amount_paid_check: CHECK ((amount_paid >= (0)::numeric))
 //   FOREIGN KEY transactions_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id)
 //   FOREIGN KEY transactions_parcelated_transaction_id_fkey: FOREIGN KEY (parcelated_transaction_id) REFERENCES parcelated_transactions(id) ON DELETE SET NULL
 //   PRIMARY KEY transactions_pkey: PRIMARY KEY (id)
@@ -1848,7 +1853,7 @@ export const Constants = {
 //       a.data_saldo_inicial,
 //       a.is_active,
 //       a.saldo_inicial +
-//       COALESCE((SELECT SUM(CASE WHEN t.type = 'Receita' THEN t.amount ELSE -t.amount END) FROM public.transactions t WHERE t.account_id = a.id AND t.date >= a.data_saldo_inicial), 0) +
+//       COALESCE((SELECT SUM(CASE WHEN t.type = 'Receita' THEN t.amount_paid ELSE -t.amount_paid END) FROM public.transactions t WHERE t.account_id = a.id AND t.date >= a.data_saldo_inicial), 0) +
 //       COALESCE((SELECT SUM(tr.valor) FROM public.transfers tr WHERE tr.conta_destino_id = a.id AND tr.date >= a.data_saldo_inicial), 0) -
 //       COALESCE((SELECT SUM(tr.valor) FROM public.transfers tr WHERE tr.conta_origem_id = a.id AND tr.date >= a.data_saldo_inicial), 0) AS saldo_atual
 //     FROM public.accounts a
@@ -1969,23 +1974,23 @@ export const Constants = {
 //
 //       -- Conciliated (confirmed transactions)
 //       acc_conc := acc_conc + COALESCE((
-//         SELECT SUM(CASE WHEN type = 'Receita' THEN amount ELSE -amount END)
+//         SELECT SUM(CASE WHEN type = 'Receita' THEN amount_paid ELSE -amount_paid END)
 //         FROM public.transactions
 //         WHERE account_id = acc.id AND date <= p_date_now AND date >= acc.data_saldo_inicial AND is_conciliated = true
 //       ), 0);
 //
 //       -- Realized (paid/received)
 //       acc_real := acc_real + COALESCE((
-//         SELECT SUM(CASE WHEN type = 'Receita' THEN amount ELSE -amount END)
-//         FROM public.transactions
-//         WHERE account_id = acc.id AND date <= p_date_now AND date >= acc.data_saldo_inicial AND status = 'pago'
-//       ), 0);
-//
-//       -- Projected (all)
-//       acc_proj := acc_proj + COALESCE((
-//         SELECT SUM(CASE WHEN type = 'Receita' THEN amount ELSE -amount END)
+//         SELECT SUM(CASE WHEN type = 'Receita' THEN amount_paid ELSE -amount_paid END)
 //         FROM public.transactions
 //         WHERE account_id = acc.id AND date <= p_date_now AND date >= acc.data_saldo_inicial
+//       ), 0);
+//
+//       -- Projected (realized + remaining pending)
+//       acc_proj := acc_real + COALESCE((
+//         SELECT SUM(CASE WHEN type = 'Receita' THEN (amount - amount_paid) ELSE -(amount - amount_paid) END)
+//         FROM public.transactions
+//         WHERE account_id = acc.id AND date <= p_date_now AND date >= acc.data_saldo_inicial AND status != 'pago'
 //       ), 0);
 //
 //       transfers_in := COALESCE((
@@ -2010,29 +2015,29 @@ export const Constants = {
 //       END IF;
 //     END LOOP;
 //
-//     SELECT COALESCE(SUM(amount), 0) INTO v_month_income_realized
-//     FROM public.transactions
-//     WHERE type = 'Receita' AND status = 'pago' AND date >= v_start_month AND date <= v_end_month AND organization_id = v_org_id;
-//
-//     SELECT COALESCE(SUM(amount), 0) INTO v_month_income_projected
+//     SELECT COALESCE(SUM(amount_paid), 0) INTO v_month_income_realized
 //     FROM public.transactions
 //     WHERE type = 'Receita' AND date >= v_start_month AND date <= v_end_month AND organization_id = v_org_id;
 //
-//     SELECT COALESCE(SUM(amount), 0) INTO v_month_expense_realized
+//     SELECT COALESCE(SUM(amount - amount_paid), 0) INTO v_month_income_projected
 //     FROM public.transactions
-//     WHERE type = 'Despesa' AND status = 'pago' AND date >= v_start_month AND date <= v_end_month AND organization_id = v_org_id;
+//     WHERE type = 'Receita' AND status != 'pago' AND date >= v_start_month AND date <= v_end_month AND organization_id = v_org_id;
 //
-//     SELECT COALESCE(SUM(amount), 0) INTO v_month_expense_projected
+//     SELECT COALESCE(SUM(amount_paid), 0) INTO v_month_expense_realized
 //     FROM public.transactions
 //     WHERE type = 'Despesa' AND date >= v_start_month AND date <= v_end_month AND organization_id = v_org_id;
 //
-//     SELECT COALESCE(SUM(amount), 0) INTO v_last_month_income
+//     SELECT COALESCE(SUM(amount - amount_paid), 0) INTO v_month_expense_projected
 //     FROM public.transactions
-//     WHERE type = 'Receita' AND status = 'pago' AND date >= v_start_last_month AND date <= v_end_last_month AND organization_id = v_org_id;
+//     WHERE type = 'Despesa' AND status != 'pago' AND date >= v_start_month AND date <= v_end_month AND organization_id = v_org_id;
 //
-//     SELECT COALESCE(SUM(amount), 0) INTO v_last_month_expense
+//     SELECT COALESCE(SUM(amount_paid), 0) INTO v_last_month_income
 //     FROM public.transactions
-//     WHERE type = 'Despesa' AND status = 'pago' AND date >= v_start_last_month AND date <= v_end_last_month AND organization_id = v_org_id;
+//     WHERE type = 'Receita' AND date >= v_start_last_month AND date <= v_end_last_month AND organization_id = v_org_id;
+//
+//     SELECT COALESCE(SUM(amount_paid), 0) INTO v_last_month_expense
+//     FROM public.transactions
+//     WHERE type = 'Despesa' AND date >= v_start_last_month AND date <= v_end_last_month AND organization_id = v_org_id;
 //
 //     RETURN json_build_object(
 //       'totalBalance', v_realized_balance,
