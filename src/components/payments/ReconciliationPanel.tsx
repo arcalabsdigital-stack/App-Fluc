@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   Plus,
   AlertCircle,
+  Zap,
 } from 'lucide-react'
 import { format, differenceInDays } from 'date-fns'
 import { toast } from 'sonner'
@@ -216,22 +217,87 @@ export function ReconciliationPanel() {
     setReconciliationData(result)
   }
 
+  const refreshAccounts = async () => {
+    const accs = await accountService.getAccounts()
+    setAccounts(accs.filter((a) => a.is_active))
+  }
+
   const handleConciliate = async (index: number) => {
     const row = reconciliationData[index]
     if (!row.transaction) return
 
     try {
-      await transactionService.updateTransaction(row.transaction.id, {
-        is_conciliated: true,
-        status: 'pago',
-        account_id: selectedAccountId,
-      })
+      setIsProcessing(true)
+      const amountPaid = row.statement
+        ? Math.abs(row.statement.amount)
+        : row.transaction.valor
+
+      if (row.transaction.id.startsWith('proj_')) {
+        const { id: _id, ...rest } = row.transaction as any
+        await transactionService.createTransaction({
+          ...rest,
+          is_conciliated: true,
+          status: 'pago',
+          account_id: selectedAccountId,
+          amount_paid: amountPaid,
+          is_recurring: false,
+        })
+      } else {
+        await transactionService.updateTransaction(row.transaction.id, {
+          is_conciliated: true,
+          status: 'pago',
+          account_id: selectedAccountId,
+          amount_paid: amountPaid,
+        })
+      }
       toast.success('Transação conciliada com sucesso!')
       const newData = [...reconciliationData]
       newData.splice(index, 1)
       setReconciliationData(newData)
+      await refreshAccounts()
     } catch (error) {
       toast.error('Erro ao conciliar transação.')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleQuickCreateAndSettle = async (index: number) => {
+    const row = reconciliationData[index]
+    if (!row.statement) return
+
+    try {
+      setIsProcessing(true)
+      const stmt = row.statement
+
+      const newTx = {
+        data: stmt.date,
+        descricao: stmt.description,
+        valor: Math.abs(stmt.amount),
+        amount_paid: Math.abs(stmt.amount),
+        categoria_id: 'Outros',
+        tipo_id:
+          stmt.amount < 0 ? TipoTransacao.Despesa : TipoTransacao.Receita,
+        forma_pagamento_id: 'Outros',
+        status: 'pago',
+        is_conciliated: true,
+        account_id: selectedAccountId,
+        observacoes: 'Criado via conciliação inteligente',
+        is_recurring: false,
+      } as any
+
+      await transactionService.createTransaction(newTx)
+      toast.success('Transação criada e baixada com sucesso!')
+
+      const newData = [...reconciliationData]
+      newData.splice(index, 1)
+      setReconciliationData(newData)
+      await refreshAccounts()
+    } catch (error) {
+      console.error(error)
+      toast.error('Erro ao criar transação inteligente.')
+    } finally {
+      setIsProcessing(false)
     }
   }
 
@@ -239,6 +305,7 @@ export function ReconciliationPanel() {
     setPrefilledTransaction({
       data: stmt.date,
       valor: Math.abs(stmt.amount),
+      amount_paid: Math.abs(stmt.amount),
       descricao: stmt.description,
       tipo_id: stmt.amount < 0 ? TipoTransacao.Despesa : TipoTransacao.Receita,
       account_id: selectedAccountId,
@@ -252,6 +319,7 @@ export function ReconciliationPanel() {
     setCreateFormOpen(open)
     if (!open && prefilledTransaction) {
       fetchAndMatch()
+      refreshAccounts()
       setPrefilledTransaction(null)
     }
   }
@@ -266,6 +334,13 @@ export function ReconciliationPanel() {
   const saldoFluc = currentAccount?.saldo_atual || 0
   const divergence =
     statementBalance !== undefined ? saldoFluc - statementBalance : null
+
+  const statementOnlyCount = reconciliationData.filter(
+    (r) => r.type === 'statement_only',
+  ).length
+  const systemOnlyCount = reconciliationData.filter(
+    (r) => r.type === 'system_only',
+  ).length
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -394,7 +469,7 @@ export function ReconciliationPanel() {
                 {divergence === 0
                   ? 'Saldos conferem!'
                   : divergence !== null
-                    ? 'Atenção: Os saldos não batem'
+                    ? `Divergência causada por ${statementOnlyCount} itens apenas no extrato e ${systemOnlyCount} apenas no Fluc.`
                     : 'Saldos não comparáveis'}
               </p>
             </CardContent>
@@ -482,18 +557,25 @@ export function ReconciliationPanel() {
                   )}
                   {row.type === 'statement_only' && (
                     <div className="flex flex-col items-center gap-1 w-full">
-                      <span className="text-[10px] font-medium text-amber-600 uppercase">
-                        Ausente no Fluc
+                      <span className="text-[10px] font-medium text-amber-600 uppercase text-center leading-tight">
+                        Apenas Extrato
                       </span>
                       <Button
                         size="sm"
-                        variant="outline"
-                        className="text-amber-700 border-amber-300 bg-white hover:bg-amber-50 w-full"
+                        className="bg-amber-600 hover:bg-amber-700 text-white w-full shadow-sm text-xs px-2"
+                        onClick={() => handleQuickCreateAndSettle(i)}
+                      >
+                        <Zap className="w-3 h-3 mr-1" /> Criar e Baixar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-amber-700 hover:bg-amber-50 w-full text-xs h-7"
                         onClick={() =>
                           handleCreateFromStatement(row.statement!)
                         }
                       >
-                        <Plus className="w-4 h-4 mr-1" /> Lançar
+                        Revisar Form
                       </Button>
                     </div>
                   )}
