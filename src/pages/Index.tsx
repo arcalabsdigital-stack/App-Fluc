@@ -43,64 +43,48 @@ const Index = () => {
   const kpiData: KPIMetric[] = kpis
     ? [
         {
-          label: 'Saldo Total',
-          value: kpis.totalBalance,
-          subValue: 'Acumulado',
-          trend: 0, // Total balance trend is complex without historical snapshots
-          trendLabel: 'Tempo real',
+          label: 'Saldo Conciliado',
+          value: kpis.conciliatedBalance,
+          subValue: 'Confirmado no banco',
+          trend: 0,
+          trendLabel: 'Seguro',
+          progress: 100,
+          color: 'gray',
+        },
+        {
+          label: 'Saldo Realizado',
+          value: kpis.realizedBalance,
+          subValue: 'Em caixa',
+          trend: 0,
+          trendLabel: 'Atual',
           progress: 100,
           color: 'blue',
         },
         {
-          label: 'Receita Mensal',
-          value: kpis.monthIncome,
-          subValue: 'Este mês',
-          trend:
-            kpis.lastMonthIncome > 0
-              ? Math.round(
-                  ((kpis.monthIncome - kpis.lastMonthIncome) /
-                    kpis.lastMonthIncome) *
-                    100,
-                )
-              : 0,
-          trendLabel: 'vs Mês anterior',
-          progress: 75, // Could be vs goal
-          color: 'green',
-        },
-        {
-          label: 'Despesa Mensal',
-          value: kpis.monthExpense,
-          subValue: 'Este mês',
-          trend:
-            kpis.lastMonthExpense > 0
-              ? Math.round(
-                  ((kpis.monthExpense - kpis.lastMonthExpense) /
-                    kpis.lastMonthExpense) *
-                    100,
-                )
-              : 0,
-          trendLabel: 'vs Mês anterior',
-          progress:
-            kpis.monthIncome > 0
-              ? (kpis.monthExpense / kpis.monthIncome) * 100
-              : 0,
-          color: 'red',
-        },
-        {
-          label: 'Eficiência',
-          value:
-            kpis.monthIncome > 0
-              ? `${Math.round(((kpis.monthIncome - kpis.monthExpense) / kpis.monthIncome) * 100)}%`
-              : '0%',
-          subValue: 'Margem',
+          label: 'Saldo Projetado',
+          value: kpis.projectedBalance,
+          subValue: 'Previsto no período',
           trend: 0,
-          trendLabel: 'Atual',
+          trendLabel: 'Futuro',
+          progress: 100,
+          color: 'purple',
+        },
+        {
+          label: 'Eficiência (Realizado)',
+          value:
+            kpis.monthIncomeRealized > 0
+              ? `${Math.round(((kpis.monthIncomeRealized - kpis.monthExpenseRealized) / kpis.monthIncomeRealized) * 100)}%`
+              : '0%',
+          subValue: 'Margem atual',
+          trend: 0,
+          trendLabel: 'Mensal',
           progress:
-            kpis.monthIncome > 0
-              ? ((kpis.monthIncome - kpis.monthExpense) / kpis.monthIncome) *
+            kpis.monthIncomeRealized > 0
+              ? ((kpis.monthIncomeRealized - kpis.monthExpenseRealized) /
+                  kpis.monthIncomeRealized) *
                 100
               : 0,
-          color: 'purple',
+          color: 'green',
         },
       ]
     : []

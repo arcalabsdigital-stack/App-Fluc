@@ -11,7 +11,7 @@ export function KPICard({ data }: KPICardProps) {
   const isPositive = data.trend > 0
   const isNeutral = data.trend === 0
 
-  const colorMap = {
+  const colorMap: Record<string, string> = {
     blue: 'bg-blue-500',
     green: 'bg-green-500',
     purple: 'bg-purple-500',

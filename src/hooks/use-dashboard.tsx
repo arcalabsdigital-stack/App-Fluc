@@ -31,9 +31,19 @@ export interface ProjectionDataPoint {
   expectedExpense: number
 }
 
+export interface ExtendedDashboardKPIs extends DashboardKPIs {
+  conciliatedBalance: number
+  realizedBalance: number
+  projectedBalance: number
+  monthIncomeRealized: number
+  monthIncomeProjected: number
+  monthExpenseRealized: number
+  monthExpenseProjected: number
+}
+
 export const useDashboard = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [kpis, setKpis] = useState<DashboardKPIs | null>(null)
+  const [kpis, setKpis] = useState<ExtendedDashboardKPIs | null>(null)
   const [projectionData, setProjectionData] = useState<ProjectionDataPoint[]>(
     [],
   )
@@ -118,20 +128,40 @@ export const useDashboard = () => {
     const end = endOfMonth(date)
     const days = eachDayOfInterval({ start, end })
 
-    const data: ChartDataPoint[] = days.map((day) => {
+    const data: any[] = days.map((day) => {
       const dayStr = format(day, 'yyyy-MM-dd')
       const dayTrans = transactions.filter(
         (t) => format(t.data, 'yyyy-MM-dd') === dayStr,
       )
 
+      const revProjected = dayTrans
+        .filter((t) => t.tipo_id === TipoTransacao.Receita)
+        .reduce((acc, curr) => acc + curr.valor, 0)
+      const expProjected = dayTrans
+        .filter((t) => t.tipo_id === TipoTransacao.Despesa)
+        .reduce((acc, curr) => acc + curr.valor, 0)
+
+      const revRealized = dayTrans
+        .filter(
+          (t) => t.tipo_id === TipoTransacao.Receita && t.status === 'pago',
+        )
+        .reduce((acc, curr) => acc + curr.valor, 0)
+      const expRealized = dayTrans
+        .filter(
+          (t) => t.tipo_id === TipoTransacao.Despesa && t.status === 'pago',
+        )
+        .reduce((acc, curr) => acc + curr.valor, 0)
+
       return {
         date: format(day, 'd MMM', { locale: ptBR }),
-        revenue: dayTrans
-          .filter((t) => t.tipo_id === TipoTransacao.Receita)
-          .reduce((acc, curr) => acc + curr.valor, 0),
-        expenses: dayTrans
-          .filter((t) => t.tipo_id === TipoTransacao.Despesa)
-          .reduce((acc, curr) => acc + curr.valor, 0),
+        revenue: revProjected, // fallback
+        expenses: expProjected, // fallback
+        realized: revRealized - expRealized,
+        projected: revProjected - expProjected,
+        revRealized,
+        expRealized,
+        revProjected,
+        expProjected,
       }
     })
     setChartData(data)

@@ -550,6 +550,7 @@ export type Database = {
           id: string
           installment_amount: number
           is_active: boolean
+          is_conciliated: boolean | null
           next_installment_date: string
           organization_id: string
           paid_installments: number
@@ -569,6 +570,7 @@ export type Database = {
           id?: string
           installment_amount: number
           is_active?: boolean
+          is_conciliated?: boolean | null
           next_installment_date: string
           organization_id: string
           paid_installments?: number
@@ -588,6 +590,7 @@ export type Database = {
           id?: string
           installment_amount?: number
           is_active?: boolean
+          is_conciliated?: boolean | null
           next_installment_date?: string
           organization_id?: string
           paid_installments?: number
@@ -767,6 +770,7 @@ export type Database = {
           description: string
           frequency: string
           id: string
+          is_conciliated: boolean | null
           next_date: string
           notes: string | null
           organization_id: string
@@ -784,6 +788,7 @@ export type Database = {
           description: string
           frequency: string
           id?: string
+          is_conciliated?: boolean | null
           next_date: string
           notes?: string | null
           organization_id: string
@@ -801,6 +806,7 @@ export type Database = {
           description?: string
           frequency?: string
           id?: string
+          is_conciliated?: boolean | null
           next_date?: string
           notes?: string | null
           organization_id?: string
@@ -887,6 +893,7 @@ export type Database = {
           description: string
           id: string
           installment_number: number | null
+          is_conciliated: boolean | null
           notes: string | null
           organization_id: string
           parcelated_transaction_id: string | null
@@ -906,6 +913,7 @@ export type Database = {
           description: string
           id?: string
           installment_number?: number | null
+          is_conciliated?: boolean | null
           notes?: string | null
           organization_id: string
           parcelated_transaction_id?: string | null
@@ -925,6 +933,7 @@ export type Database = {
           description?: string
           id?: string
           installment_number?: number | null
+          is_conciliated?: boolean | null
           notes?: string | null
           organization_id?: string
           parcelated_transaction_id?: string | null
@@ -1379,6 +1388,7 @@ export const Constants = {
 //   updated_at: timestamp with time zone (not null, default: now())
 //   user_id: uuid (not null)
 //   account_id: uuid (nullable)
+//   is_conciliated: boolean (nullable, default: false)
 // Table: pending_rewards
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (not null)
@@ -1429,6 +1439,7 @@ export const Constants = {
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
 //   account_id: uuid (nullable)
+//   is_conciliated: boolean (nullable, default: false)
 // Table: subscriptions
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (not null)
@@ -1459,6 +1470,7 @@ export const Constants = {
 //   parcelated_transaction_id: uuid (nullable)
 //   installment_number: integer (nullable)
 //   account_id: uuid (nullable)
+//   is_conciliated: boolean (nullable, default: false)
 // Table: transfers
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (not null)

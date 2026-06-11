@@ -14,7 +14,7 @@ export const dashboardService = {
     return data
   },
 
-  async getKPIs(date: Date = new Date()): Promise<DashboardKPIs> {
+  async getKPIs(date: Date = new Date()): Promise<any> {
     const targetDate = format(date, 'yyyy-MM-dd')
     // RPC call respects RLS because we updated it to SECURITY INVOKER
     const { data, error } = await supabase.rpc('get_dashboard_kpi', {
@@ -26,7 +26,7 @@ export const dashboardService = {
       throw error
     }
 
-    return data as DashboardKPIs
+    return data as any
   },
 
   async getRecentTransactions(limit = 5): Promise<Transacao[]> {
