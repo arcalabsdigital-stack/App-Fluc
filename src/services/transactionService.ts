@@ -41,7 +41,7 @@ const mapToRow = (transaction: Omit<Transacao, 'id'>, userId: string) => ({
   description: transaction.descricao,
   amount: transaction.valor,
   amount_paid: transaction.amount_paid || 0,
-  category: transaction.categoria_id,
+  category: (transaction as any).categoria_id || (transaction as any).category,
   type: transaction.tipo_id,
   payment_method: transaction.forma_pagamento_id,
   notes: transaction.observacoes,
@@ -241,7 +241,8 @@ export const transactionService = {
         .update({
           description: transaction.descricao,
           amount: transaction.valor,
-          category: transaction.categoria_id,
+          category:
+            (transaction as any).categoria_id || (transaction as any).category,
           type: transaction.tipo_id,
           payment_method: transaction.forma_pagamento_id,
           notes: transaction.observacoes,
@@ -253,7 +254,8 @@ export const transactionService = {
         .update({
           description: transaction.descricao,
           amount: transaction.valor,
-          category: transaction.categoria_id,
+          category:
+            (transaction as any).categoria_id || (transaction as any).category,
           type: transaction.tipo_id,
           payment_method: transaction.forma_pagamento_id,
           notes: transaction.observacoes,
@@ -355,7 +357,8 @@ export const transactionService = {
           user_id: user.id,
           description: transaction.descricao,
           amount: transaction.valor,
-          category: transaction.categoria_id,
+          category:
+            (transaction as any).categoria_id || (transaction as any).category,
           type: transaction.tipo_id,
           payment_method: transaction.forma_pagamento_id,
           frequency: 'monthly',
@@ -415,7 +418,10 @@ export const transactionService = {
             user_id: user.id,
             description: transaction.descricao || existingTx.description,
             amount: transaction.valor || existingTx.amount,
-            category: transaction.categoria_id || existingTx.category,
+            category:
+              (transaction as any).categoria_id ||
+              (transaction as any).category ||
+              existingTx.category,
             type: transaction.tipo_id || existingTx.type,
             payment_method:
               transaction.forma_pagamento_id || existingTx.payment_method,
@@ -443,7 +449,10 @@ export const transactionService = {
           .update({
             description: transaction.descricao || existingTx.description,
             amount: transaction.valor || existingTx.amount,
-            category: transaction.categoria_id || existingTx.category,
+            category:
+              (transaction as any).categoria_id ||
+              (transaction as any).category ||
+              existingTx.category,
             type: transaction.tipo_id || existingTx.type,
             payment_method:
               transaction.forma_pagamento_id || existingTx.payment_method,
@@ -460,7 +469,10 @@ export const transactionService = {
         .update({
           description: transaction.descricao || existingTx.description,
           amount: transaction.valor || existingTx.amount,
-          category: transaction.categoria_id || existingTx.category,
+          category:
+            (transaction as any).categoria_id ||
+            (transaction as any).category ||
+            existingTx.category,
           type: transaction.tipo_id || existingTx.type,
           payment_method:
             transaction.forma_pagamento_id || existingTx.payment_method,
@@ -478,7 +490,11 @@ export const transactionService = {
     if (transaction.data) updates.date = format(transaction.data, 'yyyy-MM-dd')
     if (transaction.descricao) updates.description = transaction.descricao
     if (transaction.valor) updates.amount = transaction.valor
-    if (transaction.categoria_id) updates.category = transaction.categoria_id
+
+    const cat =
+      (transaction as any).categoria_id || (transaction as any).category
+    if (cat) updates.category = cat
+
     if (transaction.tipo_id) updates.type = transaction.tipo_id
     if (transaction.forma_pagamento_id)
       updates.payment_method = transaction.forma_pagamento_id

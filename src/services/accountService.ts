@@ -30,9 +30,15 @@ export const accountService = {
     } = await supabase.auth.getUser()
     if (!user) throw new Error('User not authenticated')
 
+    const { data: orgId, error: orgError } = await supabase.rpc(
+      'get_current_user_org_id',
+    )
+    if (orgError) throw orgError
+
     const { data, error } = await supabase
       .from('accounts')
       .insert({
+        organization_id: orgId,
         nome: account.nome,
         tipo: account.tipo,
         saldo_inicial: account.saldo_inicial,

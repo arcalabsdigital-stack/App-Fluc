@@ -90,8 +90,8 @@ export default function AccountsPage() {
       }
       setDialogOpen(false)
       fetchAccounts()
-    } catch (error) {
-      toast.error('Erro ao salvar conta')
+    } catch (error: any) {
+      toast.error(error?.message || 'Erro ao salvar conta')
     }
   }
 

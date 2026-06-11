@@ -208,7 +208,10 @@ export function TransactionForm({
         data: transactionToEdit.data,
         descricao: transactionToEdit.descricao,
         valor: transactionToEdit.valor,
-        categoria_id: transactionToEdit.categoria_id,
+        categoria_id:
+          transactionToEdit.categoria_id ||
+          (transactionToEdit as any).category ||
+          '',
         forma_pagamento_id: transactionToEdit.forma_pagamento_id,
         observacoes: transactionToEdit.observacoes || '',
         is_recurring: !!transactionToEdit.recurring_transaction_id,
@@ -225,7 +228,8 @@ export function TransactionForm({
         descricao: initialData.descricao || '',
         valor: initialData.valor || 0,
         observacoes: '',
-        categoria_id: '',
+        categoria_id:
+          initialData.categoria_id || (initialData as any).category || '',
         forma_pagamento_id: FormaPagamento.Pix,
         data: initialData.data || new Date(),
         is_recurring: false,
@@ -325,9 +329,10 @@ export function TransactionForm({
         values.account_id === 'none' ? null : values.account_id
 
       if (transactionToEdit) {
-        const payload: Partial<Transacao> = {
+        const payload: any = {
           ...values,
           categoria_id: categoryName,
+          category: categoryName,
           tipo_id: tipoId,
           account_id: finalAccountId,
         }
@@ -364,6 +369,7 @@ export function TransactionForm({
             valor: values.valor,
             amount_paid: values.status === 'pago' ? values.valor : 0,
             categoria_id: categoryName,
+            category: categoryName,
             tipo_id: tipoId,
             forma_pagamento_id: values.forma_pagamento_id,
             data: values.data,
@@ -372,7 +378,7 @@ export function TransactionForm({
             is_recurring: values.is_recurring,
             parcelas: values.parcelas,
             account_id: finalAccountId,
-          })
+          } as any)
 
           if (values.vida_util && values.vida_util > 0) {
             const depreciableAmount = values.valor - values.valor_residual
@@ -384,13 +390,14 @@ export function TransactionForm({
                 valor: monthlyDepreciation,
                 amount_paid: 0,
                 categoria_id: 'Depreciação e Amortização',
+                category: 'Depreciação e Amortização',
                 tipo_id: TipoTransacao.Despesa,
                 forma_pagamento_id: FormaPagamento.Transferencia,
                 data: addMonths(values.data, 1),
                 status: 'aberto',
                 is_recurring: true,
                 account_id: finalAccountId,
-              })
+              } as any)
               toast.success('Ativo e Depreciação Automática criados!')
             }
           } else {
@@ -402,6 +409,7 @@ export function TransactionForm({
             valor: values.valor,
             amount_paid: values.status === 'pago' ? values.valor : 0,
             categoria_id: categoryName,
+            category: categoryName,
             tipo_id: tipoId,
             forma_pagamento_id: values.forma_pagamento_id,
             data: values.data,
@@ -409,7 +417,7 @@ export function TransactionForm({
             observacoes: values.observacoes,
             parcelas: 1,
             account_id: finalAccountId,
-          })
+          } as any)
 
           if (values.parcelas > 0) {
             const installmentAmount =
@@ -420,13 +428,14 @@ export function TransactionForm({
                 valor: installmentAmount,
                 amount_paid: 0,
                 categoria_id: 'Pagamento de Dívidas',
+                category: 'Pagamento de Dívidas',
                 tipo_id: TipoTransacao.Despesa,
                 forma_pagamento_id: values.forma_pagamento_id,
                 data: addMonths(values.data, i + 1),
                 status: 'aberto',
                 parcelas: 1,
                 account_id: finalAccountId,
-              })
+              } as any)
             }
             toast.success('Dívida e parcelas geradas com sucesso!')
           } else {
@@ -438,6 +447,7 @@ export function TransactionForm({
             valor: values.valor,
             amount_paid: values.status === 'pago' ? values.valor : 0,
             categoria_id: categoryName,
+            category: categoryName,
             tipo_id: tipoId,
             forma_pagamento_id: values.forma_pagamento_id,
             data: values.data,
@@ -446,7 +456,7 @@ export function TransactionForm({
             is_recurring: values.is_recurring,
             parcelas: values.parcelas,
             account_id: finalAccountId,
-          })
+          } as any)
           toast.success('Transação criada com sucesso')
         }
       }
