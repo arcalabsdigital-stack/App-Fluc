@@ -50,11 +50,13 @@ export const useDashboard = () => {
 
   // Listen to transaction store changes to refresh dashboard
   const { transactions: storeTransactions } = useTransactionStore()
-  const { role } = useAuth()
+  const { role, loading: authLoading, currentWorkspace } = useAuth()
 
   const fetchData = useCallback(async () => {
+    if (authLoading) return
+
     // If role is not yet determined or is visitante, we might handle it early
-    if (role === 'visitante') {
+    if (!role || role === 'visitante' || !currentWorkspace) {
       setLoading(false)
       setKpis(null)
       setRecentTransactions([])
@@ -107,7 +109,7 @@ export const useDashboard = () => {
     } finally {
       setLoading(false)
     }
-  }, [role, selectedDate])
+  }, [role, selectedDate, authLoading, currentWorkspace])
 
   // Process data for charts
   const processChartData = (transactions: Transacao[], date: Date) => {

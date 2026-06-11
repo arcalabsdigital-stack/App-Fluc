@@ -251,7 +251,7 @@ const Index = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:gap-6">
-            <BreakevenCard />
+            <BreakevenCard selectedDate={selectedDate} />
           </div>
 
           {/* Bottom Section: Recent Transactions + Expense Breakdown */}

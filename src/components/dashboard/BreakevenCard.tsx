@@ -3,28 +3,35 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Target, TrendingUp, AlertTriangle } from 'lucide-react'
 import { dashboardService } from '@/services/dashboardService'
 import { Transacao } from '@/lib/types'
+import { useAuth } from '@/hooks/use-auth'
+import { Skeleton } from '@/components/ui/skeleton'
+import { startOfMonth, endOfMonth } from 'date-fns'
 
-export function BreakevenCard() {
+interface BreakevenCardProps {
+  selectedDate?: Date
+}
+
+export function BreakevenCard({
+  selectedDate = new Date(),
+}: BreakevenCardProps) {
+  const { currentWorkspace } = useAuth()
   const [data, setData] = useState({
     fixedCosts: 0,
     variableCosts: 0,
     revenue: 0,
     breakeven: 0,
   })
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const fetchBreakeven = async () => {
+      if (!currentWorkspace) return
+
+      setIsLoading(true)
       try {
-        const start = new Date(
-          new Date().getFullYear(),
-          new Date().getMonth(),
-          1,
-        )
-        const end = new Date(
-          new Date().getFullYear(),
-          new Date().getMonth() + 1,
-          0,
-        )
+        const start = startOfMonth(selectedDate)
+        const end = endOfMonth(selectedDate)
+
         const txs = await dashboardService.getTransactionsForPeriod(start, end)
         const recurringTxs = await dashboardService.getRecurringTransactions()
 
@@ -33,15 +40,23 @@ export function BreakevenCard() {
         let revenue = 0
 
         recurringTxs.forEach((rt) => {
-          if (rt.type === 'Despesa') {
+          if (rt.type === 'Despesa' || rt.type === 'expense') {
             fixedCosts += Number(rt.amount)
           }
         })
 
         txs.forEach((t: Transacao) => {
-          if (t.tipo_id === 'Receita') {
+          // Check against possible translations and database constraints
+          if (
+            t.tipo_id === 'Receita' ||
+            t.tipo_id === ('income' as any) ||
+            t.tipo_id === ('revenue' as any)
+          ) {
             revenue += t.valor
-          } else if (t.tipo_id === 'Despesa') {
+          } else if (
+            t.tipo_id === 'Despesa' ||
+            t.tipo_id === ('expense' as any)
+          ) {
             if (!t.recurring_transaction_id) {
               variableCosts += t.valor
             }
@@ -59,12 +74,19 @@ export function BreakevenCard() {
         setData({ fixedCosts, variableCosts, revenue, breakeven })
       } catch (error) {
         console.error('Error calculating breakeven:', error)
+      } finally {
+        setIsLoading(false)
       }
     }
+
     fetchBreakeven()
-  }, [])
+  }, [currentWorkspace, selectedDate])
 
   const reached = data.revenue >= data.breakeven && data.breakeven > 0
+
+  if (isLoading) {
+    return <Skeleton className="h-[250px] w-full rounded-3xl" />
+  }
 
   return (
     <Card
@@ -85,10 +107,12 @@ export function BreakevenCard() {
           </p>
           <div className="flex items-end gap-3">
             <span className="text-3xl font-bold text-gray-900">
-              {new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL',
-              }).format(data.breakeven)}
+              {data.breakeven > 0
+                ? new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  }).format(data.breakeven)
+                : 'R$ 0,00'}
             </span>
           </div>
 
@@ -142,6 +166,11 @@ export function BreakevenCard() {
             <div className="mt-2 bg-green-100 text-green-700 p-2.5 rounded-lg text-xs font-medium flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
               Você já ultrapassou o ponto de equilíbrio!
+            </div>
+          ) : data.revenue === 0 && data.breakeven === 0 ? (
+            <div className="mt-2 bg-gray-100 text-gray-700 p-2.5 rounded-lg text-xs font-medium flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              Sem receitas registradas para calcular
             </div>
           ) : (
             <div className="mt-2 bg-amber-100 text-amber-700 p-2.5 rounded-lg text-xs font-medium flex items-center gap-2">

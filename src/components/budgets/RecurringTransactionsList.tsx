@@ -173,11 +173,11 @@ export function RecurringTransactionsList() {
   const openEdit = (r: any) => {
     setEditId(r.id)
     setFormData({
-      description: r.description,
-      amount: r.amount.toString(),
-      category: r.category,
-      frequency: r.frequency,
-      next_date: r.next_date,
+      description: r.description || '',
+      amount: r.amount?.toString() || '0',
+      category: r.category || '',
+      frequency: r.frequency || 'monthly',
+      next_date: r.next_date || format(new Date(), 'yyyy-MM-dd'),
     })
     setIsOpen(true)
   }
@@ -192,7 +192,9 @@ export function RecurringTransactionsList() {
     }
   }
 
-  const expenseCategories = categories.filter((c) => c.tipo === 'Despesa')
+  const expenseCategories = (categories || []).filter(
+    (c) => c.tipo === 'Despesa' || c.tipo === 'expense',
+  )
 
   const frequencyLabel = (freq: string) => {
     switch (freq) {
@@ -392,8 +394,8 @@ export function RecurringTransactionsList() {
                 <tbody className="divide-y divide-gray-100">
                   {recurring.map((r) => {
                     const categoryName =
-                      categories.find((c) => c.id === r.category)?.nome ||
-                      'Desconhecida'
+                      (categories || []).find((c) => c.id === r.category)
+                        ?.nome || 'Desconhecida'
                     return (
                       <tr
                         key={r.id}
@@ -411,13 +413,19 @@ export function RecurringTransactionsList() {
                           {frequencyLabel(r.frequency)}
                         </td>
                         <td className="px-6 py-4 text-gray-600">
-                          {format(new Date(r.next_date), "dd 'de' MMM, yyyy", {
-                            locale: ptBR,
-                          })}
+                          {r.next_date
+                            ? format(
+                                new Date(r.next_date),
+                                "dd 'de' MMM, yyyy",
+                                {
+                                  locale: ptBR,
+                                },
+                              )
+                            : 'Data não definida'}
                         </td>
                         <td className="px-6 py-4 text-right font-semibold text-red-600 whitespace-nowrap">
                           - R${' '}
-                          {r.amount.toLocaleString('pt-BR', {
+                          {Number(r.amount || 0).toLocaleString('pt-BR', {
                             minimumFractionDigits: 2,
                           })}
                         </td>

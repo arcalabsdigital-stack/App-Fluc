@@ -87,7 +87,9 @@ export function RecurringTransactionsSettings() {
     }
   }
 
-  const expenseCategories = categories.filter((c) => c.tipo === 'Despesa')
+  const expenseCategories = (categories || []).filter(
+    (c) => c.tipo === 'Despesa' || c.tipo === 'expense',
+  )
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden p-6 sm:p-8">
@@ -238,7 +240,7 @@ export function RecurringTransactionsSettings() {
             ) : (
               recurring.map((r) => {
                 const categoryName =
-                  categories.find((c) => c.id === r.category)?.nome ||
+                  (categories || []).find((c) => c.id === r.category)?.nome ||
                   'Desconhecida'
                 return (
                   <TableRow key={r.id}>
@@ -258,11 +260,13 @@ export function RecurringTransactionsSettings() {
                           : 'Anual'}
                     </TableCell>
                     <TableCell className="text-gray-500">
-                      {format(new Date(r.next_date), 'dd/MM/yyyy')}
+                      {r.next_date
+                        ? format(new Date(r.next_date), 'dd/MM/yyyy')
+                        : 'Data não definida'}
                     </TableCell>
                     <TableCell className="text-right font-bold text-red-600">
                       R${' '}
-                      {r.amount.toLocaleString('pt-BR', {
+                      {Number(r.amount || 0).toLocaleString('pt-BR', {
                         minimumFractionDigits: 2,
                       })}
                     </TableCell>

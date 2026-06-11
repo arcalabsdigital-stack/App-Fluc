@@ -15,6 +15,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounts: {
+        Row: {
+          created_at: string | null
+          data_saldo_inicial: string
+          id: string
+          is_active: boolean
+          nome: string
+          organization_id: string
+          saldo_inicial: number
+          tipo: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data_saldo_inicial?: string
+          id?: string
+          is_active?: boolean
+          nome: string
+          organization_id: string
+          saldo_inicial?: number
+          tipo: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data_saldo_inicial?: string
+          id?: string
+          is_active?: boolean
+          nome?: string
+          organization_id?: string
+          saldo_inicial?: number
+          tipo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'accounts_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -498,6 +542,7 @@ export type Database = {
       }
       parcelated_transactions: {
         Row: {
+          account_id: string | null
           category_id: string
           created_at: string
           description: string
@@ -516,6 +561,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_id?: string | null
           category_id: string
           created_at?: string
           description: string
@@ -534,6 +580,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_id?: string | null
           category_id?: string
           created_at?: string
           description?: string
@@ -564,6 +611,13 @@ export type Database = {
             columns: ['organization_id']
             isOneToOne: false
             referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'parcelated_transactions_account_id_fkey'
+            columns: ['account_id']
+            isOneToOne: false
+            referencedRelation: 'accounts'
             referencedColumns: ['id']
           },
         ]
@@ -706,6 +760,7 @@ export type Database = {
       }
       recurring_transactions: {
         Row: {
+          account_id: string | null
           amount: number
           category: string
           created_at: string | null
@@ -722,6 +777,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_id?: string | null
           amount: number
           category: string
           created_at?: string | null
@@ -738,6 +794,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_id?: string | null
           amount?: number
           category?: string
           created_at?: string | null
@@ -754,6 +811,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: 'recurring_transactions_account_id_fkey'
+            columns: ['account_id']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['id']
+          },
           {
             foreignKeyName: 'recurring_transactions_organization_id_fkey'
             columns: ['organization_id']
@@ -815,6 +879,7 @@ export type Database = {
       }
       transactions: {
         Row: {
+          account_id: string | null
           amount: number
           category: string
           created_at: string | null
@@ -833,6 +898,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_id?: string | null
           amount: number
           category: string
           created_at?: string | null
@@ -851,6 +917,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_id?: string | null
           amount?: number
           category?: string
           created_at?: string | null
@@ -870,6 +937,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: 'transactions_account_id_fkey'
+            columns: ['account_id']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['id']
+          },
+          {
             foreignKeyName: 'transactions_organization_id_fkey'
             columns: ['organization_id']
             isOneToOne: false
@@ -888,6 +962,67 @@ export type Database = {
             columns: ['recurring_transaction_id']
             isOneToOne: false
             referencedRelation: 'recurring_transactions'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      transfers: {
+        Row: {
+          conta_destino_id: string
+          conta_origem_id: string
+          created_at: string | null
+          date: string
+          description: string | null
+          id: string
+          organization_id: string
+          updated_at: string | null
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          conta_destino_id: string
+          conta_origem_id: string
+          created_at?: string | null
+          date: string
+          description?: string | null
+          id?: string
+          organization_id: string
+          updated_at?: string | null
+          user_id: string
+          valor: number
+        }
+        Update: {
+          conta_destino_id?: string
+          conta_origem_id?: string
+          created_at?: string | null
+          date?: string
+          description?: string | null
+          id?: string
+          organization_id?: string
+          updated_at?: string | null
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'transfers_conta_destino_id_fkey'
+            columns: ['conta_destino_id']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'transfers_conta_origem_id_fkey'
+            columns: ['conta_origem_id']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'transfers_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
             referencedColumns: ['id']
           },
         ]
@@ -936,6 +1071,19 @@ export type Database = {
       create_new_workspace: {
         Args: { p_cnpj: string; p_corporate_name: string; p_name: string }
         Returns: string
+      }
+      get_accounts_with_balances: {
+        Args: never
+        Returns: {
+          data_saldo_inicial: string
+          id: string
+          is_active: boolean
+          nome: string
+          organization_id: string
+          saldo_atual: number
+          saldo_inicial: number
+          tipo: string
+        }[]
       }
       get_all_users_for_admin: {
         Args: never
@@ -1100,6 +1248,16 @@ export const Constants = {
 // --- COLUMN TYPES (actual PostgreSQL types) ---
 // Use this to know the real database type when writing migrations.
 // "string" in TypeScript types above may be uuid, text, varchar, timestamptz, etc.
+// Table: accounts
+//   id: uuid (not null, default: gen_random_uuid())
+//   organization_id: uuid (not null)
+//   nome: text (not null)
+//   tipo: text (not null)
+//   saldo_inicial: numeric (not null, default: 0)
+//   data_saldo_inicial: date (not null, default: CURRENT_DATE)
+//   is_active: boolean (not null, default: true)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   updated_at: timestamp with time zone (nullable, default: now())
 // Table: audit_logs
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (not null)
@@ -1220,6 +1378,7 @@ export const Constants = {
 //   created_at: timestamp with time zone (not null, default: now())
 //   updated_at: timestamp with time zone (not null, default: now())
 //   user_id: uuid (not null)
+//   account_id: uuid (nullable)
 // Table: pending_rewards
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (not null)
@@ -1269,6 +1428,7 @@ export const Constants = {
 //   notes: text (nullable)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
+//   account_id: uuid (nullable)
 // Table: subscriptions
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (not null)
@@ -1298,6 +1458,18 @@ export const Constants = {
 //   status: text (not null, default: 'pago'::text)
 //   parcelated_transaction_id: uuid (nullable)
 //   installment_number: integer (nullable)
+//   account_id: uuid (nullable)
+// Table: transfers
+//   id: uuid (not null, default: gen_random_uuid())
+//   organization_id: uuid (not null)
+//   user_id: uuid (not null)
+//   conta_origem_id: uuid (not null)
+//   conta_destino_id: uuid (not null)
+//   valor: numeric (not null)
+//   date: date (not null)
+//   description: text (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   updated_at: timestamp with time zone (nullable, default: now())
 // Table: user_workspaces
 //   id: uuid (not null, default: gen_random_uuid())
 //   user_id: uuid (not null)
@@ -1307,6 +1479,10 @@ export const Constants = {
 //   created_at: timestamp with time zone (nullable, default: now())
 
 // --- CONSTRAINTS ---
+// Table: accounts
+//   FOREIGN KEY accounts_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+//   PRIMARY KEY accounts_pkey: PRIMARY KEY (id)
+//   CHECK accounts_tipo_check: CHECK ((tipo = ANY (ARRAY['corrente'::text, 'poupanca'::text, 'aplicacao'::text, 'caixa'::text])))
 // Table: audit_logs
 //   FOREIGN KEY audit_logs_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY audit_logs_pkey: PRIMARY KEY (id)
@@ -1357,6 +1533,7 @@ export const Constants = {
 //   FOREIGN KEY compras_parceladas_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY compras_parceladas_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY compras_parceladas_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+//   FOREIGN KEY parcelated_transactions_account_id_fkey: FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE RESTRICT
 // Table: pending_rewards
 //   CHECK pending_rewards_discount_type_check: CHECK ((discount_type = ANY (ARRAY['PERCENTAGE'::text, 'FIXED'::text])))
 //   FOREIGN KEY pending_rewards_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
@@ -1370,6 +1547,7 @@ export const Constants = {
 //   PRIMARY KEY profiles_pkey: PRIMARY KEY (id)
 //   CHECK profiles_role_check: CHECK ((role = ANY (ARRAY['admin'::text, 'colaborador'::text, 'visitante'::text, 'super_admin'::text])))
 // Table: recurring_transactions
+//   FOREIGN KEY recurring_transactions_account_id_fkey: FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE RESTRICT
 //   FOREIGN KEY recurring_transactions_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY recurring_transactions_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY recurring_transactions_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
@@ -1378,11 +1556,19 @@ export const Constants = {
 //   UNIQUE subscriptions_organization_id_key: UNIQUE (organization_id)
 //   PRIMARY KEY subscriptions_pkey: PRIMARY KEY (id)
 // Table: transactions
+//   FOREIGN KEY transactions_account_id_fkey: FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE RESTRICT
 //   FOREIGN KEY transactions_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id)
 //   FOREIGN KEY transactions_parcelated_transaction_id_fkey: FOREIGN KEY (parcelated_transaction_id) REFERENCES parcelated_transactions(id) ON DELETE SET NULL
 //   PRIMARY KEY transactions_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY transactions_recurring_transaction_id_fkey: FOREIGN KEY (recurring_transaction_id) REFERENCES recurring_transactions(id) ON DELETE SET NULL
 //   FOREIGN KEY transactions_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id)
+// Table: transfers
+//   FOREIGN KEY transfers_conta_destino_id_fkey: FOREIGN KEY (conta_destino_id) REFERENCES accounts(id) ON DELETE RESTRICT
+//   FOREIGN KEY transfers_conta_origem_id_fkey: FOREIGN KEY (conta_origem_id) REFERENCES accounts(id) ON DELETE RESTRICT
+//   FOREIGN KEY transfers_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+//   PRIMARY KEY transfers_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY transfers_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id)
+//   CHECK transfers_valor_check: CHECK ((valor > (0)::numeric))
 // Table: user_workspaces
 //   FOREIGN KEY user_workspaces_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY user_workspaces_pkey: PRIMARY KEY (id)
@@ -1390,6 +1576,15 @@ export const Constants = {
 //   UNIQUE user_workspaces_user_id_organization_id_key: UNIQUE (user_id, organization_id)
 
 // --- ROW LEVEL SECURITY POLICIES ---
+// Table: accounts
+//   Policy "Users can delete accounts in their org" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id = get_current_user_org_id())
+//   Policy "Users can insert accounts in their org" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (organization_id = get_current_user_org_id())
+//   Policy "Users can update accounts in their org" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id = get_current_user_org_id())
+//   Policy "Users can view accounts in their org" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id = get_current_user_org_id())
 // Table: audit_logs
 //   Policy "Admins can view all audit logs" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: (is_admin() AND (organization_id = get_current_user_org_id()))
@@ -1511,6 +1706,15 @@ export const Constants = {
 //     USING: ((organization_id = get_current_user_org_id()) AND (get_user_role() <> 'visitante'::text))
 //   Policy "Users view transactions in their org" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: (organization_id = get_current_user_org_id())
+// Table: transfers
+//   Policy "Users can delete transfers in their org" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id = get_current_user_org_id())
+//   Policy "Users can insert transfers in their org" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (organization_id = get_current_user_org_id())
+//   Policy "Users can update transfers in their org" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id = get_current_user_org_id())
+//   Policy "Users can view transfers in their org" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id = get_current_user_org_id())
 // Table: user_workspaces
 //   Policy "Admins can update users in their org" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (organization_id IN ( SELECT get_auth_admin_workspaces() AS get_auth_admin_workspaces))
@@ -1615,6 +1819,32 @@ export const Constants = {
 //   END;
 //   $function$
 //
+// FUNCTION get_accounts_with_balances()
+//   CREATE OR REPLACE FUNCTION public.get_accounts_with_balances()
+//    RETURNS TABLE(id uuid, organization_id uuid, nome text, tipo text, saldo_inicial numeric, data_saldo_inicial date, is_active boolean, saldo_atual numeric)
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//     RETURN QUERY
+//     SELECT
+//       a.id,
+//       a.organization_id,
+//       a.nome,
+//       a.tipo,
+//       a.saldo_inicial,
+//       a.data_saldo_inicial,
+//       a.is_active,
+//       a.saldo_inicial +
+//       COALESCE((SELECT SUM(CASE WHEN t.type = 'Receita' THEN t.amount ELSE -t.amount END) FROM public.transactions t WHERE t.account_id = a.id AND t.date >= a.data_saldo_inicial), 0) +
+//       COALESCE((SELECT SUM(tr.valor) FROM public.transfers tr WHERE tr.conta_destino_id = a.id AND tr.date >= a.data_saldo_inicial), 0) -
+//       COALESCE((SELECT SUM(tr.valor) FROM public.transfers tr WHERE tr.conta_origem_id = a.id AND tr.date >= a.data_saldo_inicial), 0) AS saldo_atual
+//     FROM public.accounts a
+//     WHERE a.organization_id = public.get_current_user_org_id()
+//     ORDER BY a.created_at ASC;
+//   END;
+//   $function$
+//
 // FUNCTION get_all_users_for_admin()
 //   CREATE OR REPLACE FUNCTION public.get_all_users_for_admin()
 //    RETURNS TABLE(id uuid, email text, full_name text, role text, is_active boolean, created_at timestamp with time zone)
@@ -1685,6 +1915,8 @@ export const Constants = {
 //   AS $function$
 //   DECLARE
 //     v_total_balance NUMERIC;
+//     v_available_balance NUMERIC := 0;
+//     v_invested_balance NUMERIC := 0;
 //     v_month_income NUMERIC;
 //     v_month_expense NUMERIC;
 //     v_last_month_income NUMERIC;
@@ -1693,44 +1925,68 @@ export const Constants = {
 //     v_end_month DATE;
 //     v_start_last_month DATE;
 //     v_end_last_month DATE;
+//     v_org_id uuid;
+//     acc RECORD;
+//     acc_bal NUMERIC;
 //   BEGIN
+//     v_org_id := public.get_current_user_org_id();
 //     v_start_month := date_trunc('month', p_date_now);
 //     v_end_month := (date_trunc('month', p_date_now) + interval '1 month' - interval '1 day')::date;
 //     v_start_last_month := date_trunc('month', p_date_now - interval '1 month');
 //     v_end_last_month := (date_trunc('month', p_date_now) - interval '1 day')::date;
 //
-//     -- Calculate Total Balance (All time based on visibility, up to today so future manual entries do not alter today's balance)
-//     SELECT COALESCE(SUM(CASE WHEN type = 'Receita' THEN amount ELSE -amount END), 0)
-//     INTO v_total_balance
-//     FROM public.transactions
-//     WHERE date <= p_date_now;
+//     v_total_balance := 0;
 //
-//     -- Calculate Month Income
+//     FOR acc IN SELECT id, tipo, saldo_inicial, data_saldo_inicial FROM public.accounts WHERE organization_id = v_org_id AND is_active = true LOOP
+//       acc_bal := acc.saldo_inicial;
+//
+//       acc_bal := acc_bal + COALESCE((
+//         SELECT SUM(CASE WHEN type = 'Receita' THEN amount ELSE -amount END)
+//         FROM public.transactions
+//         WHERE account_id = acc.id AND date <= p_date_now AND date >= acc.data_saldo_inicial
+//       ), 0);
+//
+//       acc_bal := acc_bal + COALESCE((
+//         SELECT SUM(valor) FROM public.transfers WHERE conta_destino_id = acc.id AND date <= p_date_now AND date >= acc.data_saldo_inicial
+//       ), 0);
+//
+//       acc_bal := acc_bal - COALESCE((
+//         SELECT SUM(valor) FROM public.transfers WHERE conta_origem_id = acc.id AND date <= p_date_now AND date >= acc.data_saldo_inicial
+//       ), 0);
+//
+//       v_total_balance := v_total_balance + acc_bal;
+//
+//       IF acc.tipo IN ('corrente', 'poupanca', 'caixa') THEN
+//         v_available_balance := v_available_balance + acc_bal;
+//       ELSIF acc.tipo = 'aplicacao' THEN
+//         v_invested_balance := v_invested_balance + acc_bal;
+//       END IF;
+//     END LOOP;
+//
 //     SELECT COALESCE(SUM(amount), 0)
 //     INTO v_month_income
 //     FROM public.transactions
-//     WHERE type = 'Receita' AND date >= v_start_month AND date <= v_end_month;
+//     WHERE type = 'Receita' AND date >= v_start_month AND date <= v_end_month AND organization_id = v_org_id;
 //
-//     -- Calculate Month Expense
 //     SELECT COALESCE(SUM(amount), 0)
 //     INTO v_month_expense
 //     FROM public.transactions
-//     WHERE type = 'Despesa' AND date >= v_start_month AND date <= v_end_month;
+//     WHERE type = 'Despesa' AND date >= v_start_month AND date <= v_end_month AND organization_id = v_org_id;
 //
-//     -- Calculate Last Month Income
 //     SELECT COALESCE(SUM(amount), 0)
 //     INTO v_last_month_income
 //     FROM public.transactions
-//     WHERE type = 'Receita' AND date >= v_start_last_month AND date <= v_end_last_month;
+//     WHERE type = 'Receita' AND date >= v_start_last_month AND date <= v_end_last_month AND organization_id = v_org_id;
 //
-//     -- Calculate Last Month Expense
 //     SELECT COALESCE(SUM(amount), 0)
 //     INTO v_last_month_expense
 //     FROM public.transactions
-//     WHERE type = 'Despesa' AND date >= v_start_last_month AND date <= v_end_last_month;
+//     WHERE type = 'Despesa' AND date >= v_start_last_month AND date <= v_end_last_month AND organization_id = v_org_id;
 //
 //     RETURN json_build_object(
 //       'totalBalance', v_total_balance,
+//       'availableBalance', v_available_balance,
+//       'investedBalance', v_invested_balance,
 //       'monthIncome', v_month_income,
 //       'monthExpense', v_month_expense,
 //       'lastMonthIncome', v_last_month_income,
@@ -1952,9 +2208,9 @@ export const Constants = {
 //           WHERE next_date <= CURRENT_DATE
 //       LOOP
 //           INSERT INTO public.transactions (
-//               organization_id, user_id, description, amount, category, type, payment_method, date, recurring_transaction_id
+//               organization_id, user_id, description, amount, category, type, payment_method, date, recurring_transaction_id, account_id
 //           ) VALUES (
-//               r.organization_id, r.user_id, r.description, r.amount, r.category, r.type, r.payment_method, r.next_date, r.id
+//               r.organization_id, r.user_id, r.description, r.amount, r.category, r.type, r.payment_method, r.next_date, r.id, r.account_id
 //           );
 //
 //           UPDATE public.recurring_transactions
@@ -2036,6 +2292,10 @@ export const Constants = {
 // Table: subscriptions
 //   CREATE UNIQUE INDEX subscriptions_organization_id_key ON public.subscriptions USING btree (organization_id)
 // Table: transactions
+//   CREATE INDEX transactions_account_id_date_idx ON public.transactions USING btree (account_id, date)
 //   CREATE INDEX transactions_created_at_idx ON public.transactions USING btree (created_at DESC)
+// Table: transfers
+//   CREATE INDEX transfers_conta_destino_id_date_idx ON public.transfers USING btree (conta_destino_id, date)
+//   CREATE INDEX transfers_conta_origem_id_date_idx ON public.transfers USING btree (conta_origem_id, date)
 // Table: user_workspaces
 //   CREATE UNIQUE INDEX user_workspaces_user_id_organization_id_key ON public.user_workspaces USING btree (user_id, organization_id)
