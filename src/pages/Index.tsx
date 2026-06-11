@@ -10,6 +10,7 @@ import { CashFlowProjection } from '@/components/dashboard/CashFlowProjection'
 import { BreakevenCard } from '@/components/dashboard/BreakevenCard'
 import { UpcomingTransactions } from '@/components/dashboard/UpcomingTransactions'
 import { AccountsPosition } from '@/components/dashboard/AccountsPosition'
+import { UnifiedCashPosition } from '@/components/dashboard/UnifiedCashPosition'
 import { KPIMetric } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -44,33 +45,6 @@ const Index = () => {
   const kpiData: KPIMetric[] = kpis
     ? [
         {
-          label: 'Saldo Conciliado',
-          value: kpis.conciliatedBalance,
-          subValue: 'O validado pelo banco',
-          trend: 0,
-          trendLabel: 'Seguro',
-          progress: 100,
-          color: 'gray',
-        },
-        {
-          label: 'Saldo Realizado',
-          value: kpis.realizedBalance,
-          subValue: 'O que efetivamente entrou/saiu',
-          trend: 0,
-          trendLabel: 'Atual',
-          progress: 100,
-          color: 'blue',
-        },
-        {
-          label: 'Saldo Projetado',
-          value: kpis.projectedBalance,
-          subValue: 'O que deveria entrar/sair',
-          trend: 0,
-          trendLabel: 'Futuro',
-          progress: 100,
-          color: 'purple',
-        },
-        {
           label: 'Eficiência (Realizado)',
           value:
             kpis.monthIncomeRealized > 0
@@ -93,13 +67,9 @@ const Index = () => {
   if (loading && !kpis) {
     return (
       <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
+        <Skeleton className="h-[180px] w-full rounded-2xl sm:rounded-3xl" />
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton
-              key={i}
-              className="h-[120px] sm:h-[140px] lg:h-auto lg:min-h-[140px] rounded-2xl sm:rounded-3xl"
-            />
-          ))}
+          <Skeleton className="h-[120px] sm:h-[140px] lg:h-auto lg:min-h-[140px] rounded-2xl sm:rounded-3xl" />
         </div>
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6 h-[400px]">
           <Skeleton className="xl:col-span-2 h-full rounded-2xl sm:rounded-3xl" />
@@ -188,23 +158,27 @@ const Index = () => {
         </div>
       </div>
 
+      <UnifiedCashPosition kpis={kpis} />
+
       <UpcomingTransactions />
       <AccountsPosition />
 
       {/* KPI Row */}
-      <div
-        id="dashboard-kpis"
-        className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6"
-      >
-        {kpiData.map((kpi, index) => (
-          <div
-            key={index}
-            className="h-[120px] sm:h-[140px] lg:h-auto lg:min-h-[140px]"
-          >
-            <KPICard data={kpi} />
-          </div>
-        ))}
-      </div>
+      {kpiData.length > 0 && (
+        <div
+          id="dashboard-kpis"
+          className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6"
+        >
+          {kpiData.map((kpi, index) => (
+            <div
+              key={index}
+              className="h-[120px] sm:h-[140px] lg:h-auto lg:min-h-[140px]"
+            >
+              <KPICard data={kpi} />
+            </div>
+          ))}
+        </div>
+      )}
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="mb-4">
