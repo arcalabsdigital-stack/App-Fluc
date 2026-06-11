@@ -143,14 +143,18 @@ export const useDashboard = () => {
 
       const revRealized = dayTrans
         .filter(
-          (t) => t.tipo_id === TipoTransacao.Receita && t.status === 'pago',
+          (t) =>
+            t.tipo_id === TipoTransacao.Receita &&
+            (t.status === 'pago' || t.status === 'parcial'),
         )
-        .reduce((acc, curr) => acc + curr.valor, 0)
+        .reduce((acc, curr) => acc + (curr.amount_paid || 0), 0)
       const expRealized = dayTrans
         .filter(
-          (t) => t.tipo_id === TipoTransacao.Despesa && t.status === 'pago',
+          (t) =>
+            t.tipo_id === TipoTransacao.Despesa &&
+            (t.status === 'pago' || t.status === 'parcial'),
         )
-        .reduce((acc, curr) => acc + curr.valor, 0)
+        .reduce((acc, curr) => acc + (curr.amount_paid || 0), 0)
 
       return {
         date: format(day, 'd MMM', { locale: ptBR }),

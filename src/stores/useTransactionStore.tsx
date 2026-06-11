@@ -24,6 +24,7 @@ interface TransactionStore {
     scope: string,
   ) => Promise<void>
   deleteTransaction: (id: string) => Promise<void>
+  registerPayment: (id: string, amount: number) => Promise<void>
   addCategoriaSimplificada: (
     cat: Partial<CategoriaSimplificada>,
   ) => Promise<CategoriaSimplificada | null>
@@ -119,6 +120,16 @@ const useTransactionStore = create<TransactionStore>((set, get) => ({
     await transactionService.deleteTransaction(id)
     set((state) => ({
       transactions: state.transactions.filter((t) => t.id !== id),
+    }))
+  },
+  registerPayment: async (id, amount) => {
+    const result = await transactionService.registerPayment(id, amount)
+    const oldId = (result as any).oldId
+    delete (result as any).oldId
+    set((state) => ({
+      transactions: state.transactions.map((t) =>
+        t.id === oldId ? result : t,
+      ),
     }))
   },
 }))

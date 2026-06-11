@@ -51,6 +51,7 @@ export interface Transacao {
   data: Date
   descricao: string
   valor: number
+  amount_paid?: number
   categoria_id: string
   tipo_id: TipoTransacao
   forma_pagamento_id: FormaPagamento

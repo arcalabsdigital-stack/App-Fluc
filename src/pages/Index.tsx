@@ -9,6 +9,7 @@ import { ComparativeChart } from '@/components/dashboard/ComparativeChart'
 import { CashFlowProjection } from '@/components/dashboard/CashFlowProjection'
 import { BreakevenCard } from '@/components/dashboard/BreakevenCard'
 import { UpcomingTransactions } from '@/components/dashboard/UpcomingTransactions'
+import { AccountsPosition } from '@/components/dashboard/AccountsPosition'
 import { KPIMetric } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -45,7 +46,7 @@ const Index = () => {
         {
           label: 'Saldo Conciliado',
           value: kpis.conciliatedBalance,
-          subValue: 'Confirmado no banco',
+          subValue: 'O validado pelo banco',
           trend: 0,
           trendLabel: 'Seguro',
           progress: 100,
@@ -54,7 +55,7 @@ const Index = () => {
         {
           label: 'Saldo Realizado',
           value: kpis.realizedBalance,
-          subValue: 'Em caixa',
+          subValue: 'O que efetivamente entrou/saiu',
           trend: 0,
           trendLabel: 'Atual',
           progress: 100,
@@ -63,7 +64,7 @@ const Index = () => {
         {
           label: 'Saldo Projetado',
           value: kpis.projectedBalance,
-          subValue: 'Previsto no período',
+          subValue: 'O que deveria entrar/sair',
           trend: 0,
           trendLabel: 'Futuro',
           progress: 100,
@@ -188,6 +189,7 @@ const Index = () => {
       </div>
 
       <UpcomingTransactions />
+      <AccountsPosition />
 
       {/* KPI Row */}
       <div

@@ -82,7 +82,7 @@ const formSchema = z.object({
   observacoes: z.string().optional(),
   is_recurring: z.boolean().default(false),
   parcelas: z.coerce.number().min(1).default(1),
-  status: z.string().default('pago'),
+  status: z.string().default('aberto'),
 
   // Bens e Direitos
   valor_residual: z.coerce.number().default(0),
@@ -153,7 +153,7 @@ export function TransactionForm({
       data: new Date(),
       is_recurring: false,
       parcelas: 1,
-      status: 'pago',
+      status: 'aberto',
       valor_residual: 0,
       ajuda_vida_util: true,
       vida_util: 60,
@@ -213,7 +213,7 @@ export function TransactionForm({
         observacoes: transactionToEdit.observacoes || '',
         is_recurring: !!transactionToEdit.recurring_transaction_id,
         parcelas: transactionToEdit.parcelas || 1,
-        status: transactionToEdit.status || 'pago',
+        status: transactionToEdit.status || 'aberto',
         valor_residual: 0,
         ajuda_vida_util: true,
         vida_util: 60,
@@ -230,7 +230,7 @@ export function TransactionForm({
         data: initialData.data || new Date(),
         is_recurring: false,
         parcelas: 1,
-        status: 'pago',
+        status: 'aberto',
         valor_residual: 0,
         ajuda_vida_util: true,
         vida_util: 60,
@@ -247,7 +247,7 @@ export function TransactionForm({
         data: new Date(),
         is_recurring: false,
         parcelas: 1,
-        status: 'pago',
+        status: 'aberto',
         valor_residual: 0,
         ajuda_vida_util: true,
         vida_util: 60,
@@ -325,12 +325,22 @@ export function TransactionForm({
         values.account_id === 'none' ? null : values.account_id
 
       if (transactionToEdit) {
-        const payload = {
+        const payload: Partial<Transacao> = {
           ...values,
           categoria_id: categoryName,
           tipo_id: tipoId,
           account_id: finalAccountId,
         }
+
+        if (values.status === 'pago' && transactionToEdit.status !== 'pago') {
+          payload.amount_paid = values.valor
+        } else if (
+          values.status === 'aberto' &&
+          transactionToEdit.status !== 'aberto'
+        ) {
+          payload.amount_paid = 0
+        }
+
         if (scope !== 'single') {
           await useTransactionStore.getState().updateTransactionScope(
             transactionToEdit.id,
@@ -352,6 +362,7 @@ export function TransactionForm({
           await addTransaction({
             descricao: values.descricao,
             valor: values.valor,
+            amount_paid: values.status === 'pago' ? values.valor : 0,
             categoria_id: categoryName,
             tipo_id: tipoId,
             forma_pagamento_id: values.forma_pagamento_id,
@@ -371,11 +382,12 @@ export function TransactionForm({
               await addTransaction({
                 descricao: `Depreciação: ${values.descricao}`,
                 valor: monthlyDepreciation,
+                amount_paid: 0,
                 categoria_id: 'Depreciação e Amortização',
                 tipo_id: TipoTransacao.Despesa,
                 forma_pagamento_id: FormaPagamento.Transferencia,
                 data: addMonths(values.data, 1),
-                status: 'pago',
+                status: 'aberto',
                 is_recurring: true,
                 account_id: finalAccountId,
               })
@@ -388,11 +400,12 @@ export function TransactionForm({
           await addTransaction({
             descricao: `Empréstimo/Financiamento: ${values.descricao}`,
             valor: values.valor,
+            amount_paid: values.status === 'pago' ? values.valor : 0,
             categoria_id: categoryName,
             tipo_id: tipoId,
             forma_pagamento_id: values.forma_pagamento_id,
             data: values.data,
-            status: 'pago',
+            status: values.status,
             observacoes: values.observacoes,
             parcelas: 1,
             account_id: finalAccountId,
@@ -405,6 +418,7 @@ export function TransactionForm({
               await addTransaction({
                 descricao: `Parcela ${i + 1}/${values.parcelas}: ${values.descricao}`,
                 valor: installmentAmount,
+                amount_paid: 0,
                 categoria_id: 'Pagamento de Dívidas',
                 tipo_id: TipoTransacao.Despesa,
                 forma_pagamento_id: values.forma_pagamento_id,
@@ -422,6 +436,7 @@ export function TransactionForm({
           await addTransaction({
             descricao: values.descricao,
             valor: values.valor,
+            amount_paid: values.status === 'pago' ? values.valor : 0,
             categoria_id: categoryName,
             tipo_id: tipoId,
             forma_pagamento_id: values.forma_pagamento_id,
@@ -472,7 +487,7 @@ export function TransactionForm({
                         onValueChange={(val) => {
                           if (
                             transactionToEdit?.status === 'pago' &&
-                            val === 'aberto'
+                            val !== 'pago'
                           ) {
                             toast.error(
                               'Transações pagas não podem ser reabertas. Exclua e crie uma nova.',
@@ -490,8 +505,15 @@ export function TransactionForm({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="pago">Pago</SelectItem>
-                          <SelectItem value="aberto">Em Aberto</SelectItem>
+                          <SelectItem value="aberto">
+                            Pendente (Projetado)
+                          </SelectItem>
+                          <SelectItem value="pago">
+                            Pago/Recebido (Realizado)
+                          </SelectItem>
+                          <SelectItem value="parcial">
+                            Pago/Recebido Parcialmente
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

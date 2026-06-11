@@ -22,6 +22,7 @@ const mapToTransacao = (row: any): Transacao => ({
   data: parseLocalDate(row.date),
   descricao: row.description,
   valor: Number(row.amount),
+  amount_paid: Number(row.amount_paid || 0),
   categoria_id: row.category,
   tipo_id: row.type as TipoTransacao,
   forma_pagamento_id: row.payment_method as FormaPagamento,
@@ -39,12 +40,13 @@ const mapToRow = (transaction: Omit<Transacao, 'id'>, userId: string) => ({
   date: format(transaction.data, 'yyyy-MM-dd'),
   description: transaction.descricao,
   amount: transaction.valor,
+  amount_paid: transaction.amount_paid || 0,
   category: transaction.categoria_id,
   type: transaction.tipo_id,
   payment_method: transaction.forma_pagamento_id,
   notes: transaction.observacoes,
   recurring_transaction_id: transaction.recurring_transaction_id,
-  status: transaction.status || 'pago',
+  status: transaction.status || 'aberto',
   account_id: transaction.account_id || null,
   is_conciliated:
     transaction.is_conciliated !== undefined
@@ -162,6 +164,7 @@ export const transactionService = {
                 data: currDate,
                 descricao: rec.description,
                 valor: Number(rec.amount),
+                amount_paid: 0,
                 categoria_id: rec.category,
                 tipo_id: rec.type as TipoTransacao,
                 forma_pagamento_id: rec.payment_method as FormaPagamento,
@@ -482,6 +485,29 @@ export const transactionService = {
     if (transaction.observacoes !== undefined)
       updates.notes = transaction.observacoes
     if (transaction.status) updates.status = transaction.status
+    if (transaction.amount_paid !== undefined)
+      updates.amount_paid = transaction.amount_paid
+
+    if (
+      transaction.valor !== undefined ||
+      transaction.amount_paid !== undefined
+    ) {
+      const newTotal =
+        transaction.valor !== undefined
+          ? transaction.valor
+          : Number(existingTx.amount)
+      const newPaid =
+        transaction.amount_paid !== undefined
+          ? transaction.amount_paid
+          : Number(existingTx.amount_paid || 0)
+
+      if (!transaction.status) {
+        if (newPaid >= newTotal) updates.status = 'pago'
+        else if (newPaid > 0) updates.status = 'parcial'
+        else updates.status = 'aberto'
+      }
+    }
+
     if (transaction.account_id !== undefined)
       updates.account_id = transaction.account_id
     if (transaction.is_conciliated !== undefined)
@@ -502,5 +528,87 @@ export const transactionService = {
     const { error } = await supabase.from('transactions').delete().eq('id', id)
 
     if (error) throw error
+  },
+
+  async registerPayment(id: string, paymentAmount: number) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error('User not authenticated')
+
+    let txId = id
+    let totalAmount = 0
+    let currentAmountPaid = 0
+
+    if (id.startsWith('proj_')) {
+      const [, recurringId, dateStr] = id.split('_')
+      const { data: recData, error: recError } = await supabase
+        .from('recurring_transactions')
+        .select('*')
+        .eq('id', recurringId)
+        .single()
+
+      if (recError) throw recError
+
+      const newTx = {
+        user_id: user.id,
+        date: dateStr,
+        description: recData.description,
+        amount: recData.amount,
+        amount_paid: 0,
+        category: recData.category,
+        type: recData.type,
+        payment_method: recData.payment_method,
+        notes: recData.notes,
+        recurring_transaction_id: recurringId,
+        status: 'aberto',
+      }
+
+      const { data: createdTx, error: createError } = await supabase
+        .from('transactions')
+        .insert(newTx)
+        .select()
+        .single()
+
+      if (createError) throw createError
+
+      txId = createdTx.id
+      totalAmount = Number(createdTx.amount)
+      currentAmountPaid = 0
+    } else {
+      const { data: tx, error: fetchError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('id', txId)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      totalAmount = Number(tx.amount)
+      currentAmountPaid = Number(tx.amount_paid || 0)
+    }
+
+    const newAmountPaid = currentAmountPaid + paymentAmount
+
+    let newStatus = 'aberto'
+    if (newAmountPaid >= totalAmount) {
+      newStatus = 'pago'
+    } else if (newAmountPaid > 0) {
+      newStatus = 'parcial'
+    }
+
+    const { data, error } = await supabase
+      .from('transactions')
+      .update({
+        amount_paid: newAmountPaid,
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', txId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return { ...mapToTransacao(data), oldId: id }
   },
 }

@@ -11,17 +11,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ShieldCheck, UploadCloud, CheckCircle2, Plus } from 'lucide-react'
+import {
+  ShieldCheck,
+  UploadCloud,
+  CheckCircle2,
+  Plus,
+  AlertCircle,
+} from 'lucide-react'
 import { format, differenceInDays } from 'date-fns'
 import { toast } from 'sonner'
 import { TransactionForm } from '@/components/transactions/TransactionForm'
 
-type MatchScore = 'high' | 'medium' | 'none'
+type ReconType = 'match' | 'statement_only' | 'system_only'
 
 interface ReconciliationRow {
-  statement: BankStatementEntry
-  match: Transacao | null
-  score: MatchScore
+  id: string
+  type: ReconType
+  statement?: BankStatementEntry
+  transaction?: Transacao
+  score?: 'high' | 'medium'
 }
 
 export default function ReconciliationPage() {
@@ -65,9 +73,12 @@ export default function ReconciliationPage() {
               (t.account_id === selectedAccountId || !t.account_id),
           )
           setTransactions(eligible)
+          if (statements.length > 0) {
+            matchTransactions(statements, eligible)
+          }
         })
     }
-  }, [selectedAccountId])
+  }, [selectedAccountId, statements])
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -98,9 +109,15 @@ export default function ReconciliationPage() {
     let availableTxs = [...txs]
     const result: ReconciliationRow[] = []
 
+    let minDate = new Date()
+    let maxDate = new Date(1900, 0, 1)
+
     for (const stmt of stmts) {
+      if (stmt.date < minDate) minDate = stmt.date
+      if (stmt.date > maxDate) maxDate = stmt.date
+
       let bestMatch: Transacao | null = null
-      let bestScore: MatchScore = 'none'
+      let bestScore: 'high' | 'medium' | null = null
 
       for (const tx of availableTxs) {
         const stmtAmt = Math.abs(stmt.amount)
@@ -121,24 +138,49 @@ export default function ReconciliationPage() {
 
       if (bestMatch) {
         availableTxs = availableTxs.filter((t) => t.id !== bestMatch!.id)
+        result.push({
+          id: `match_${stmt.id}`,
+          type: 'match',
+          statement: stmt,
+          transaction: bestMatch,
+          score: bestScore!,
+        })
+      } else {
+        result.push({
+          id: `stmt_${stmt.id}`,
+          type: 'statement_only',
+          statement: stmt,
+        })
       }
-
-      result.push({
-        statement: stmt,
-        match: bestMatch,
-        score: bestScore,
-      })
     }
+
+    for (const tx of availableTxs) {
+      const daysFromStart = differenceInDays(tx.data, minDate)
+      const daysFromEnd = differenceInDays(tx.data, maxDate)
+      if (daysFromStart >= -3 && daysFromEnd <= 3 && tx.status !== 'aberto') {
+        result.push({
+          id: `tx_${tx.id}`,
+          type: 'system_only',
+          transaction: tx,
+        })
+      }
+    }
+
+    result.sort((a, b) => {
+      const dateA = a.statement?.date || a.transaction?.data || new Date()
+      const dateB = b.statement?.date || b.transaction?.data || new Date()
+      return dateA.getTime() - dateB.getTime()
+    })
 
     setReconciliationData(result)
   }
 
   const handleConciliate = async (index: number) => {
     const row = reconciliationData[index]
-    if (!row.match) return
+    if (!row.transaction) return
 
     try {
-      await transactionService.updateTransaction(row.match.id, {
+      await transactionService.updateTransaction(row.transaction.id, {
         is_conciliated: true,
         status: 'pago',
         account_id: selectedAccountId,
@@ -165,6 +207,7 @@ export default function ReconciliationPage() {
       tipo_id: stmt.amount < 0 ? TipoTransacao.Despesa : TipoTransacao.Receita,
       account_id: selectedAccountId,
       status: 'pago',
+      is_conciliated: true,
     })
     setCreateFormOpen(true)
   }
@@ -203,7 +246,7 @@ export default function ReconciliationPage() {
     }).format(val)
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -251,7 +294,7 @@ export default function ReconciliationPage() {
           <div className="py-20 flex flex-col items-center justify-center text-center">
             <ShieldCheck className="w-16 h-16 text-gray-200 mb-4" />
             <h3 className="text-lg font-semibold text-gray-700">
-              Nenhum extrato importado
+              Nenhum extrato importado ou todos conciliados
             </h3>
             <p className="text-gray-500 max-w-md mt-2">
               Selecione uma conta e importe o arquivo OFX ou CSV do seu banco
@@ -273,88 +316,129 @@ export default function ReconciliationPage() {
             </div>
             {reconciliationData.map((row, i) => (
               <div
-                key={row.statement.id}
-                className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50/50 transition-colors"
+                key={row.id}
+                className={`grid grid-cols-12 gap-4 p-4 items-center transition-colors border-l-4 ${
+                  row.type === 'match'
+                    ? 'border-green-500 hover:bg-green-50/30'
+                    : row.type === 'statement_only'
+                      ? 'border-amber-500 hover:bg-amber-50/30 bg-amber-50/10'
+                      : 'border-red-500 hover:bg-red-50/30 bg-red-50/10'
+                }`}
               >
                 <div className="col-span-5 flex flex-col">
-                  <span
-                    className="font-medium text-gray-900 truncate"
-                    title={row.statement.description}
-                  >
-                    {row.statement.description}
-                  </span>
-                  <div className="flex items-center gap-3 text-sm mt-1">
-                    <span className="text-gray-500">
-                      {format(row.statement.date, 'dd/MM/yyyy')}
-                    </span>
-                    <span
-                      className={`font-semibold ${row.statement.amount < 0 ? 'text-red-600' : 'text-green-600'}`}
-                    >
-                      {formatCurrency(row.statement.amount)}
-                    </span>
-                  </div>
+                  {row.statement ? (
+                    <>
+                      <span
+                        className="font-medium text-gray-900 truncate"
+                        title={row.statement.description}
+                      >
+                        {row.statement.description}
+                      </span>
+                      <div className="flex items-center gap-3 text-sm mt-1">
+                        <span className="text-gray-500">
+                          {format(row.statement.date, 'dd/MM/yyyy')}
+                        </span>
+                        <span
+                          className={`font-semibold ${row.statement.amount < 0 ? 'text-red-600' : 'text-green-600'}`}
+                        >
+                          {formatCurrency(row.statement.amount)}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-gray-400 italic flex items-center text-sm gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      Não encontrado no extrato bancário
+                    </div>
+                  )}
                 </div>
 
                 <div className="col-span-2 flex flex-col items-center justify-center">
-                  {row.match ? (
+                  {row.type === 'match' && (
                     <Button
                       size="sm"
                       onClick={() => handleConciliate(i)}
                       className={
                         row.score === 'high'
                           ? 'bg-green-600 hover:bg-green-700'
-                          : 'bg-amber-500 hover:bg-amber-600'
+                          : 'bg-green-500 hover:bg-green-600'
                       }
                     >
                       <CheckCircle2 className="w-4 h-4 mr-1" /> Confirmar
                     </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        handleCreateFromStatement(row.statement, i)
-                      }
-                    >
-                      <Plus className="w-4 h-4 mr-1" /> Registrar
-                    </Button>
+                  )}
+                  {row.type === 'statement_only' && (
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] font-medium text-amber-600 uppercase">
+                        Sugestão
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-amber-700 border-amber-300 bg-white hover:bg-amber-50 w-full"
+                        onClick={() =>
+                          handleCreateFromStatement(row.statement!, i)
+                        }
+                      >
+                        <Plus className="w-4 h-4 mr-1" /> Criar Lançamento
+                      </Button>
+                    </div>
+                  )}
+                  {row.type === 'system_only' && (
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] font-medium text-red-600 uppercase flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> Divergência
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-700 border-red-300 bg-white hover:bg-red-50 w-full"
+                        onClick={() => handleConciliate(i)}
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-1" /> Forçar Baixa
+                      </Button>
+                    </div>
                   )}
                 </div>
 
                 <div className="col-span-5">
-                  {row.match ? (
+                  {row.transaction ? (
                     <div
-                      className={`p-3 rounded-lg border flex flex-col ${row.score === 'high' ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}
+                      className={`p-3 rounded-lg border flex flex-col bg-white shadow-sm ${
+                        row.type === 'match'
+                          ? 'border-green-200'
+                          : 'border-red-200'
+                      }`}
                     >
                       <div className="flex justify-between">
                         <span
                           className="font-medium text-gray-900 truncate max-w-[200px]"
-                          title={row.match.descricao}
+                          title={row.transaction.descricao}
                         >
-                          {row.match.descricao}
+                          {row.transaction.descricao}
                         </span>
                         <span
-                          className={`font-bold ${row.match.tipo_id === 'Despesa' ? 'text-red-600' : 'text-green-600'}`}
+                          className={`font-bold ${row.transaction.tipo_id === 'Despesa' ? 'text-red-600' : 'text-green-600'}`}
                         >
                           {formatCurrency(
-                            row.match.tipo_id === 'Despesa'
-                              ? -row.match.valor
-                              : row.match.valor,
+                            row.transaction.tipo_id === 'Despesa'
+                              ? -row.transaction.valor
+                              : row.transaction.valor,
                           )}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-xs mt-2">
                         <span className="text-gray-500">
-                          {format(row.match.data, 'dd/MM/yyyy')}
+                          {format(row.transaction.data, 'dd/MM/yyyy')}
                         </span>
-                        <span className="text-gray-500 px-2 py-0.5 bg-white rounded border">
-                          {row.match.categoria_id}
+                        <span className="text-gray-500 px-2 py-0.5 bg-gray-100 rounded border">
+                          {row.transaction.categoria_id}
                         </span>
                       </div>
                     </div>
                   ) : (
                     <div className="h-full flex items-center justify-center p-3 rounded-lg border border-dashed border-gray-300 text-gray-400 text-sm bg-gray-50">
-                      Nenhum registro correspondente encontrado
+                      Pendente no Sistema
                     </div>
                   )}
                 </div>

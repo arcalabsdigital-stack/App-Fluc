@@ -193,8 +193,9 @@ export function TransactionFilters({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="pago">Pago</SelectItem>
-            <SelectItem value="aberto">Em Aberto</SelectItem>
+            <SelectItem value="aberto">Pendente (Projetado)</SelectItem>
+            <SelectItem value="pago">Realizado</SelectItem>
+            <SelectItem value="parcial">Parcial</SelectItem>
           </SelectContent>
         </Select>
 

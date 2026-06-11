@@ -31,6 +31,7 @@ import {
   Clock,
   FileText,
   FileSpreadsheet,
+  CheckCircle,
 } from 'lucide-react'
 import useTransactionStore from '@/stores/useTransactionStore'
 import { cn } from '@/lib/utils'
@@ -55,9 +56,35 @@ export function TransactionsTable({
   onImportSuccess,
   isVisitor = false,
 }: TransactionsTableProps) {
-  const { categories, deleteTransaction } = useTransactionStore()
+  const { categories, deleteTransaction, registerPayment } =
+    useTransactionStore()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [isDeletingBulk, setIsDeletingBulk] = useState(false)
+  const [paymentDialog, setPaymentDialog] = useState<Transacao | null>(null)
+  const [paymentAmount, setPaymentAmount] = useState<string>('')
+
+  useEffect(() => {
+    if (paymentDialog) {
+      const remaining = paymentDialog.valor - (paymentDialog.amount_paid || 0)
+      setPaymentAmount(remaining.toString())
+    }
+  }, [paymentDialog])
+
+  const handleRegisterPayment = async () => {
+    if (!paymentDialog || !paymentAmount) return
+    const amount = parseFloat(paymentAmount)
+    if (amount <= 0) {
+      toast.error('O valor deve ser maior que 0')
+      return
+    }
+    try {
+      await registerPayment(paymentDialog.id, amount)
+      toast.success('Pagamento registrado com sucesso!')
+      setPaymentDialog(null)
+    } catch (error) {
+      toast.error('Erro ao registrar pagamento')
+    }
+  }
 
   const getCategoryName = (id: string) => {
     const category = categories.find((c) => c.id === id)
@@ -324,12 +351,18 @@ export function TransactionsTable({
                       'inline-flex items-center justify-center h-7 px-2.5 text-xs font-medium rounded-full',
                       transaction.status === 'pago'
                         ? 'text-green-700 bg-green-50'
-                        : 'text-amber-700 bg-amber-50',
+                        : transaction.status === 'parcial'
+                          ? 'text-blue-700 bg-blue-50'
+                          : 'text-amber-700 bg-amber-50',
                     )}
                   >
                     {transaction.status === 'pago' ? (
                       <span className="flex items-center gap-1.5">
-                        <Check className="w-3 h-3" /> Pago
+                        <Check className="w-3 h-3" /> Realizado
+                      </span>
+                    ) : transaction.status === 'parcial' ? (
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="w-3 h-3" /> Parcial
                       </span>
                     ) : (
                       <span className="flex items-center gap-1.5">
@@ -358,6 +391,18 @@ export function TransactionsTable({
                 {!isVisitor && (
                   <TableCell className="text-right lg:whitespace-nowrap sticky right-0 z-10 bg-white group-hover:bg-slate-50 shadow-[-1px_0_0_#e5e7eb] transition-colors">
                     <div className="flex items-center justify-end gap-2">
+                      {transaction.status !== 'pago' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-green-500 hover:text-green-700 hover:bg-green-50"
+                          onClick={() => setPaymentDialog(transaction)}
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          <span className="sr-only">Baixar</span>
+                        </Button>
+                      )}
+
                       <Button
                         variant="ghost"
                         size="icon"
@@ -408,6 +453,59 @@ export function TransactionsTable({
           </TableBody>
         </Table>
       </div>
+
+      <Dialog
+        open={!!paymentDialog}
+        onOpenChange={(val) => !val && setPaymentDialog(null)}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Registrar Pagamento / Baixa</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="text-sm text-gray-500">
+              Valor Total:{' '}
+              {paymentDialog && formatCurrency(paymentDialog.valor)}
+              <br />
+              Valor Já Pago:{' '}
+              {paymentDialog && formatCurrency(paymentDialog.amount_paid || 0)}
+              <br />
+              <strong>
+                Saldo Restante:{' '}
+                {paymentDialog &&
+                  formatCurrency(
+                    paymentDialog.valor - (paymentDialog.amount_paid || 0),
+                  )}
+              </strong>
+            </div>
+            <div className="grid gap-2">
+              <label htmlFor="payment" className="text-sm font-medium">
+                Valor da Baixa (R$)
+              </label>
+              <Input
+                id="payment"
+                type="number"
+                step="0.01"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+              />
+              {paymentDialog &&
+                parseFloat(paymentAmount) <
+                  paymentDialog.valor - (paymentDialog.amount_paid || 0) && (
+                  <p className="text-xs text-amber-600">
+                    Este valor resultará em uma baixa parcial.
+                  </p>
+                )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPaymentDialog(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleRegisterPayment}>Confirmar Baixa</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
