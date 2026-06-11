@@ -3,26 +3,19 @@ import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import {
-  Plus,
-  Trash2,
-  Edit,
-  RepeatIcon,
-  Calendar,
-  Tag,
-  CreditCard,
-  Loader2,
-} from 'lucide-react'
+import { Plus, Trash2, Edit, RepeatIcon } from 'lucide-react'
 import useTransactionStore from '@/stores/useTransactionStore'
-import { format } from 'date-fns'
+import { format, isValid, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 export function RecurringTransactionsList() {
@@ -52,13 +45,20 @@ export function RecurringTransactionsList() {
   const fetchRecurring = async () => {
     if (!currentWorkspace) return
     setIsFetching(true)
-    const { data } = await supabase
-      .from('recurring_transactions')
-      .select('*')
-      .eq('organization_id', currentWorkspace.id)
-      .order('created_at', { ascending: false })
-    if (data) setRecurring(data)
-    setIsFetching(false)
+    try {
+      const { data, error } = await supabase
+        .from('recurring_transactions')
+        .select('*')
+        .eq('organization_id', currentWorkspace.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      if (data) setRecurring(data)
+    } catch (err) {
+      toast.error('Erro ao buscar transações recorrentes')
+    } finally {
+      setIsFetching(false)
+    }
   }
 
   const handleSave = async (e: React.FormEvent) => {
@@ -172,12 +172,25 @@ export function RecurringTransactionsList() {
 
   const openEdit = (r: any) => {
     setEditId(r.id)
+
+    let nextDateStr = format(new Date(), 'yyyy-MM-dd')
+    if (r.next_date) {
+      try {
+        const parsed = parseISO(r.next_date)
+        if (isValid(parsed)) {
+          nextDateStr = format(parsed, 'yyyy-MM-dd')
+        }
+      } catch (e) {
+        // Ignorar erro de parse e usar data atual
+      }
+    }
+
     setFormData({
       description: r.description || '',
       amount: r.amount?.toString() || '0',
       category: r.category || '',
       frequency: r.frequency || 'monthly',
-      next_date: r.next_date || format(new Date(), 'yyyy-MM-dd'),
+      next_date: nextDateStr,
     })
     setIsOpen(true)
   }
@@ -358,8 +371,11 @@ export function RecurringTransactionsList() {
       </div>
 
       {isFetching ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-300" />
+        <div className="bg-white rounded-3xl border shadow-sm p-6 space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
         </div>
       ) : (
         <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">
@@ -369,7 +385,7 @@ export function RecurringTransactionsList() {
                 <RepeatIcon className="w-8 h-8 text-gray-400" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-1">
-                Nenhum gasto fixo
+                Nenhum gasto recorrente encontrado
               </h3>
               <p className="text-gray-500 max-w-sm mx-auto">
                 Adicione suas assinaturas, contas de luz, internet e outros
@@ -396,6 +412,25 @@ export function RecurringTransactionsList() {
                     const categoryName =
                       (categories || []).find((c) => c.id === r.category)
                         ?.nome || 'Desconhecida'
+
+                    let formattedDate = 'Data não definida'
+                    if (r.next_date) {
+                      try {
+                        const parsedDate = parseISO(r.next_date)
+                        if (isValid(parsedDate)) {
+                          formattedDate = format(
+                            parsedDate,
+                            "dd 'de' MMM, yyyy",
+                            { locale: ptBR },
+                          )
+                        } else {
+                          formattedDate = 'Data inválida'
+                        }
+                      } catch (e) {
+                        formattedDate = 'Data inválida'
+                      }
+                    }
+
                     return (
                       <tr
                         key={r.id}
@@ -413,15 +448,7 @@ export function RecurringTransactionsList() {
                           {frequencyLabel(r.frequency)}
                         </td>
                         <td className="px-6 py-4 text-gray-600">
-                          {r.next_date
-                            ? format(
-                                new Date(r.next_date),
-                                "dd 'de' MMM, yyyy",
-                                {
-                                  locale: ptBR,
-                                },
-                              )
-                            : 'Data não definida'}
+                          {formattedDate}
                         </td>
                         <td className="px-6 py-4 text-right font-semibold text-red-600 whitespace-nowrap">
                           - R${' '}

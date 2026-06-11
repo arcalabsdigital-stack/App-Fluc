@@ -1,42 +1,30 @@
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { BudgetsProgress } from '@/components/dashboard/BudgetsProgress'
-import { RecurringTransactionsList } from '@/components/budgets/RecurringTransactionsList'
 import { useAuth } from '@/hooks/use-auth'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Target, RepeatIcon } from 'lucide-react'
 
 export default function Budgets() {
   const { currentWorkspace } = useAuth()
-  const location = useLocation()
   const navigate = useNavigate()
-
-  const currentTab =
-    location.pathname === '/recurring' ? 'recurring' : 'budgets'
-
-  const handleTabChange = (val: string) => {
-    if (val === 'recurring') {
-      navigate('/recurring')
-    } else {
-      navigate('/budgets')
-    }
-  }
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6 animate-fade-in pb-10 px-0 sm:px-0">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-          {currentTab === 'recurring' ? 'Gastos Recorrentes' : 'Orçamentos'}
+          Orçamentos
         </h1>
         <p className="text-sm sm:text-base text-gray-500">
-          {currentTab === 'recurring'
-            ? `Gerencie suas assinaturas e gastos fixos em ${currentWorkspace?.name || 'sua organização'}.`
-            : `Gerencie limites de gastos mensais para as suas categorias em ${currentWorkspace?.name || 'sua organização'}.`}
+          Gerencie limites de gastos mensais para as suas categorias em{' '}
+          {currentWorkspace?.name || 'sua organização'}.
         </p>
       </div>
 
       <Tabs
-        value={currentTab}
-        onValueChange={handleTabChange}
+        value="budgets"
+        onValueChange={(val) => {
+          if (val === 'recurring') navigate('/recurring')
+        }}
         className="w-full"
       >
         <TabsList className="mb-6 bg-white border border-gray-100 h-14 p-1 shadow-sm rounded-xl overflow-x-auto overflow-y-hidden flex-nowrap justify-start w-full sm:w-fit">
@@ -86,10 +74,6 @@ export default function Budgets() {
               </ul>
             </div>
           </div>
-        </TabsContent>
-
-        <TabsContent value="recurring" className="animate-fade-in mt-0">
-          <RecurringTransactionsList />
         </TabsContent>
       </Tabs>
     </div>

@@ -17,6 +17,7 @@ import Search from './pages/Search'
 import Checkout from './pages/Checkout'
 import Valuation from './pages/Valuation'
 import Budgets from './pages/Budgets'
+import Recurring from './pages/Recurring'
 import AdminCoupons from './pages/admin/Coupons'
 import AdminStaff from './pages/admin/Staff'
 import { TransactionProvider } from '@/stores/useTransactionStore'
@@ -47,7 +48,7 @@ const App = () => (
                 <Route path="/search" element={<Search />} />
                 <Route path="/valuation" element={<Valuation />} />
                 <Route path="/budgets" element={<Budgets />} />
-                <Route path="/recurring" element={<Budgets />} />
+                <Route path="/recurring" element={<Recurring />} />
                 <Route path="/admin/coupons" element={<AdminCoupons />} />
                 <Route path="/admin/staff" element={<AdminStaff />} />
               </Route>
