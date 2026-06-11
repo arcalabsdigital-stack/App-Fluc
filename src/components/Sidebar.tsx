@@ -216,6 +216,22 @@ export function Sidebar({
               onClick={onNavigate}
             />
             <SidebarItem
+              id="sidebar-item-Contas"
+              icon={Wallet}
+              label="Contas Bancárias"
+              to="/accounts"
+              isActive={pathname === '/accounts'}
+              onClick={onNavigate}
+            />
+            <SidebarItem
+              id="sidebar-item-Conciliacao"
+              icon={ShieldCheck}
+              label="Conciliação"
+              to="/reconciliation"
+              isActive={pathname === '/reconciliation'}
+              onClick={onNavigate}
+            />
+            <SidebarItem
               id="sidebar-item-Orçamentos"
               icon={Target}
               label="Orçamentos"
@@ -233,7 +249,7 @@ export function Sidebar({
             />
             <SidebarItem
               id="sidebar-item-Transações"
-              icon={Wallet}
+              icon={Tag}
               label="Transações"
               to="/payments"
               isActive={pathname === '/payments'}

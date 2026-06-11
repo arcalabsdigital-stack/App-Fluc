@@ -20,6 +20,8 @@ import Budgets from './pages/Budgets'
 import Recurring from './pages/Recurring'
 import AdminCoupons from './pages/admin/Coupons'
 import AdminStaff from './pages/admin/Staff'
+import Accounts from './pages/Accounts'
+import Reconciliation from './pages/Reconciliation'
 import { TransactionProvider } from '@/stores/useTransactionStore'
 import { AuthProvider } from '@/hooks/use-auth'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -40,6 +42,8 @@ const App = () => (
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
                 <Route path="/" element={<Index />} />
+                <Route path="/accounts" element={<Accounts />} />
+                <Route path="/reconciliation" element={<Reconciliation />} />
                 <Route path="/payments" element={<Payments />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/help" element={<Help />} />

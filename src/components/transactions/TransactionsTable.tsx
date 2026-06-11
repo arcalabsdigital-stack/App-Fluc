@@ -244,6 +244,9 @@ export function TransactionsTable({
               <TableHead className="w-[110px] text-center lg:whitespace-nowrap">
                 Status
               </TableHead>
+              <TableHead className="w-[100px] text-center lg:whitespace-nowrap">
+                Conciliado
+              </TableHead>
               {!isVisitor && (
                 <TableHead className="w-[100px] text-right lg:whitespace-nowrap sticky right-0 z-30 bg-gray-50 shadow-[-1px_0_0_#e5e7eb]">
                   Ações
@@ -334,6 +337,23 @@ export function TransactionsTable({
                       </span>
                     )}
                   </div>
+                </TableCell>
+                <TableCell className="text-center lg:whitespace-nowrap">
+                  {transaction.is_conciliated ? (
+                    <Badge
+                      variant="outline"
+                      className="bg-blue-50 text-blue-700 border-blue-200"
+                    >
+                      Sim
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className="bg-gray-50 text-gray-500 border-gray-200"
+                    >
+                      Não
+                    </Badge>
+                  )}
                 </TableCell>
                 {!isVisitor && (
                   <TableCell className="text-right lg:whitespace-nowrap sticky right-0 z-10 bg-white group-hover:bg-slate-50 shadow-[-1px_0_0_#e5e7eb] transition-colors">

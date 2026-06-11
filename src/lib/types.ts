@@ -59,4 +59,17 @@ export interface Transacao {
   is_recurring?: boolean
   parcelas?: number
   status?: string
+  account_id?: string | null
+  is_conciliated?: boolean
+}
+
+export interface Conta {
+  id: string
+  organization_id: string
+  nome: string
+  tipo: string
+  saldo_inicial: number
+  data_saldo_inicial: string
+  is_active: boolean
+  saldo_atual?: number
 }

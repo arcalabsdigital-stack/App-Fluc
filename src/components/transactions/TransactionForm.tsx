@@ -50,8 +50,9 @@ import {
   SelectLabel,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Transacao, TipoTransacao, FormaPagamento } from '@/lib/types'
+import { Transacao, TipoTransacao, FormaPagamento, Conta } from '@/lib/types'
 import useTransactionStore from '@/stores/useTransactionStore'
+import { accountService } from '@/services/accountService'
 import { toast } from 'sonner'
 
 const TIPO_GRUPOS = [
@@ -90,18 +91,22 @@ const formSchema = z.object({
 
   // Dividas
   juros: z.coerce.number().default(0),
+
+  account_id: z.string().optional().nullable(),
 })
 
 interface TransactionFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   transactionToEdit?: Transacao | null
+  initialData?: Partial<Transacao> | null
 }
 
 export function TransactionForm({
   open,
   onOpenChange,
   transactionToEdit,
+  initialData,
 }: TransactionFormProps) {
   const {
     categoriasSimplificadas,
@@ -128,6 +133,14 @@ export function TransactionForm({
   const [pendingValues, setPendingValues] = useState<z.infer<
     typeof formSchema
   > | null>(null)
+
+  const [accounts, setAccounts] = useState<Conta[]>([])
+
+  useEffect(() => {
+    if (open) {
+      accountService.getAccounts().then(setAccounts).catch(console.error)
+    }
+  }, [open])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -205,6 +218,24 @@ export function TransactionForm({
         ajuda_vida_util: true,
         vida_util: 60,
         juros: 0,
+        account_id: transactionToEdit.account_id || null,
+      })
+    } else if (open && initialData) {
+      form.reset({
+        descricao: initialData.descricao || '',
+        valor: initialData.valor || 0,
+        observacoes: '',
+        categoria_id: '',
+        forma_pagamento_id: FormaPagamento.Pix,
+        data: initialData.data || new Date(),
+        is_recurring: false,
+        parcelas: 1,
+        status: 'pago',
+        valor_residual: 0,
+        ajuda_vida_util: true,
+        vida_util: 60,
+        juros: 0,
+        account_id: initialData.account_id || null,
       })
     } else if (open) {
       form.reset({
@@ -221,9 +252,10 @@ export function TransactionForm({
         ajuda_vida_util: true,
         vida_util: 60,
         juros: 0,
+        account_id: null,
       })
     }
-  }, [transactionToEdit, form, open])
+  }, [transactionToEdit, initialData, form, open])
 
   async function handleCreateCustomCategory() {
     if (!customCatName || customCatName.length < 2) return
@@ -289,11 +321,15 @@ export function TransactionForm({
           ? TipoTransacao.Receita
           : TipoTransacao.Despesa
 
+      const finalAccountId =
+        values.account_id === 'none' ? null : values.account_id
+
       if (transactionToEdit) {
         const payload = {
           ...values,
           categoria_id: categoryName,
           tipo_id: tipoId,
+          account_id: finalAccountId,
         }
         if (scope !== 'single') {
           await useTransactionStore.getState().updateTransactionScope(
@@ -324,6 +360,7 @@ export function TransactionForm({
             observacoes: values.observacoes,
             is_recurring: values.is_recurring,
             parcelas: values.parcelas,
+            account_id: finalAccountId,
           })
 
           if (values.vida_util && values.vida_util > 0) {
@@ -340,6 +377,7 @@ export function TransactionForm({
                 data: addMonths(values.data, 1),
                 status: 'pago',
                 is_recurring: true,
+                account_id: finalAccountId,
               })
               toast.success('Ativo e Depreciação Automática criados!')
             }
@@ -357,6 +395,7 @@ export function TransactionForm({
             status: 'pago',
             observacoes: values.observacoes,
             parcelas: 1,
+            account_id: finalAccountId,
           })
 
           if (values.parcelas > 0) {
@@ -372,6 +411,7 @@ export function TransactionForm({
                 data: addMonths(values.data, i + 1),
                 status: 'aberto',
                 parcelas: 1,
+                account_id: finalAccountId,
               })
             }
             toast.success('Dívida e parcelas geradas com sucesso!')
@@ -390,6 +430,7 @@ export function TransactionForm({
             observacoes: values.observacoes,
             is_recurring: values.is_recurring,
             parcelas: values.parcelas,
+            account_id: finalAccountId,
           })
           toast.success('Transação criada com sucesso')
         }
@@ -718,34 +759,73 @@ export function TransactionForm({
                 </div>
               )}
 
-              <FormField
-                control={form.control}
-                name="forma_pagamento_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Forma de Pagamento</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o método" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.values(FormaPagamento).map((method) => (
-                          <SelectItem key={method} value={method}>
-                            {method}
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="forma_pagamento_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Forma de Pagamento</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o método" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Object.values(FormaPagamento).map((method) => (
+                            <SelectItem key={method} value={method}>
+                              {method}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="account_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Conta Bancária</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value || undefined}
+                        value={field.value || undefined}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a conta" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem
+                            value="none"
+                            className="text-gray-500 italic"
+                          >
+                            Sem conta atrelada
                           </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                          {accounts
+                            .filter((a) => a.is_active)
+                            .map((acc) => (
+                              <SelectItem key={acc.id} value={acc.id}>
+                                {acc.nome} ({acc.tipo})
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <FormField
                 control={form.control}

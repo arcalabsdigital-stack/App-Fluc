@@ -8,6 +8,12 @@ import {
 import { format } from 'date-fns'
 
 export const dashboardService = {
+  async getAccountsWithBalances() {
+    const { data, error } = await supabase.rpc('get_accounts_with_balances')
+    if (error) throw error
+    return data
+  },
+
   async getKPIs(date: Date = new Date()): Promise<DashboardKPIs> {
     const targetDate = format(date, 'yyyy-MM-dd')
     // RPC call respects RLS because we updated it to SECURITY INVOKER

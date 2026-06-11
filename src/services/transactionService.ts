@@ -29,6 +29,8 @@ const mapToTransacao = (row: any): Transacao => ({
   recurring_transaction_id: row.recurring_transaction_id,
   is_recurring: !!row.recurring_transaction_id,
   status: row.status,
+  account_id: row.account_id,
+  is_conciliated: row.is_conciliated,
 })
 
 // Helper to map Transacao to DB row
@@ -43,6 +45,11 @@ const mapToRow = (transaction: Omit<Transacao, 'id'>, userId: string) => ({
   notes: transaction.observacoes,
   recurring_transaction_id: transaction.recurring_transaction_id,
   status: transaction.status || 'pago',
+  account_id: transaction.account_id || null,
+  is_conciliated:
+    transaction.is_conciliated !== undefined
+      ? transaction.is_conciliated
+      : false,
 })
 
 export const transactionService = {
@@ -259,11 +266,22 @@ export const transactionService = {
 
       await query
 
-      if (!isProj && transaction.status) {
-        await supabase
-          .from('transactions')
-          .update({ status: transaction.status })
-          .eq('id', id)
+      if (
+        !isProj &&
+        (transaction.status ||
+          transaction.is_conciliated !== undefined ||
+          transaction.account_id !== undefined)
+      ) {
+        const updates: any = {}
+        if (transaction.status) updates.status = transaction.status
+        if (transaction.is_conciliated !== undefined)
+          updates.is_conciliated = transaction.is_conciliated
+        if (transaction.account_id !== undefined)
+          updates.account_id = transaction.account_id
+
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('transactions').update(updates).eq('id', id)
+        }
       } else if (isProj && transaction.status === 'pago') {
         const { id: _, ...txWithoutId } = transaction as any
         await this.createTransaction({
@@ -464,6 +482,10 @@ export const transactionService = {
     if (transaction.observacoes !== undefined)
       updates.notes = transaction.observacoes
     if (transaction.status) updates.status = transaction.status
+    if (transaction.account_id !== undefined)
+      updates.account_id = transaction.account_id
+    if (transaction.is_conciliated !== undefined)
+      updates.is_conciliated = transaction.is_conciliated
 
     const { data, error } = await supabase
       .from('transactions')
