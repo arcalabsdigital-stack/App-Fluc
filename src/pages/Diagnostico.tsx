@@ -33,9 +33,12 @@ import { Progress } from '@/components/ui/progress'
 import { useDiagnostico } from '@/hooks/use-diagnostico'
 import { useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
+import { SimulacaoModal } from '@/components/SimulacaoModal'
+import { PlayCircle } from 'lucide-react'
 
 export default function Diagnostico() {
   const [selectedDate, setSelectedDate] = useState(new Date())
+  const [isSimulacaoOpen, setIsSimulacaoOpen] = useState(false)
   const { loading, metrics } = useDiagnostico(selectedDate)
   const navigate = useNavigate()
 
@@ -70,7 +73,16 @@ export default function Diagnostico() {
           Meu Diagnóstico
         </h2>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-between sm:justify-start">
+        <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-between sm:justify-start flex-wrap sm:flex-nowrap">
+          <Button
+            onClick={() => setIsSimulacaoOpen(true)}
+            className="gap-2 w-full sm:w-auto order-last sm:order-first"
+            variant="secondary"
+          >
+            <PlayCircle className="h-4 w-4" />
+            Simular Decisão
+          </Button>
+
           <Button
             variant="outline"
             size="icon"
@@ -368,6 +380,11 @@ export default function Diagnostico() {
               </CardContent>
             </Card>
           </div>
+
+          <SimulacaoModal
+            isOpen={isSimulacaoOpen}
+            onOpenChange={setIsSimulacaoOpen}
+          />
 
           {metrics.hasProjetado && (
             <Card className="rounded-2xl border-none shadow-sm">

@@ -706,6 +706,56 @@ export type Database = {
           },
         ]
       }
+      planning_summaries: {
+        Row: {
+          created_at: string | null
+          expenses_breakdown: Json | null
+          id: string
+          month: number
+          organization_id: string
+          revenue_source: string | null
+          total_expenses: number
+          total_revenue: number
+          updated_at: string | null
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          expenses_breakdown?: Json | null
+          id?: string
+          month: number
+          organization_id: string
+          revenue_source?: string | null
+          total_expenses?: number
+          total_revenue?: number
+          updated_at?: string | null
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          expenses_breakdown?: Json | null
+          id?: string
+          month?: number
+          organization_id?: string
+          revenue_source?: string | null
+          total_expenses?: number
+          total_revenue?: number
+          updated_at?: string | null
+          user_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'planning_summaries_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       plans: {
         Row: {
           asaas_plan_id: string | null
@@ -1458,6 +1508,18 @@ export const Constants = {
 //   discount_value: numeric (not null)
 //   is_applied: boolean (not null, default: false)
 //   created_at: timestamp with time zone (not null, default: now())
+// Table: planning_summaries
+//   id: uuid (not null, default: gen_random_uuid())
+//   organization_id: uuid (not null)
+//   user_id: uuid (not null)
+//   month: integer (not null)
+//   year: integer (not null)
+//   total_revenue: numeric (not null, default: 0)
+//   revenue_source: text (nullable)
+//   total_expenses: numeric (not null, default: 0)
+//   expenses_breakdown: jsonb (nullable, default: '{}'::jsonb)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   updated_at: timestamp with time zone (nullable, default: now())
 // Table: plans
 //   id: uuid (not null, default: gen_random_uuid())
 //   name: text (not null)
@@ -1618,6 +1680,11 @@ export const Constants = {
 //   CHECK pending_rewards_discount_type_check: CHECK ((discount_type = ANY (ARRAY['PERCENTAGE'::text, 'FIXED'::text])))
 //   FOREIGN KEY pending_rewards_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY pending_rewards_pkey: PRIMARY KEY (id)
+// Table: planning_summaries
+//   FOREIGN KEY planning_summaries_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+//   UNIQUE planning_summaries_organization_id_month_year_key: UNIQUE (organization_id, month, year)
+//   PRIMARY KEY planning_summaries_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY planning_summaries_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: plans
 //   UNIQUE plans_name_key: UNIQUE (name)
 //   PRIMARY KEY plans_pkey: PRIMARY KEY (id)
@@ -1766,6 +1833,15 @@ export const Constants = {
 // Table: pending_rewards
 //   Policy "SuperAdmin manage pending rewards" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: is_super_admin()
+// Table: planning_summaries
+//   Policy "Users can delete planning_summaries in their org" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id = get_current_user_org_id())
+//   Policy "Users can insert planning_summaries in their org" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (organization_id = get_current_user_org_id())
+//   Policy "Users can update planning_summaries in their org" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id = get_current_user_org_id())
+//   Policy "Users can view planning_summaries in their org" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id = get_current_user_org_id())
 // Table: plans
 //   Policy "authenticated_select_plans" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -2415,6 +2491,8 @@ export const Constants = {
 //   set_notifications_org_id_trigger: CREATE TRIGGER set_notifications_org_id_trigger BEFORE INSERT ON public.notifications FOR EACH ROW EXECUTE FUNCTION set_org_id_on_insert()
 // Table: parcelated_transactions
 //   set_parcelated_transactions_org_id_trigger: CREATE TRIGGER set_parcelated_transactions_org_id_trigger BEFORE INSERT ON public.parcelated_transactions FOR EACH ROW EXECUTE FUNCTION set_org_id_on_insert()
+// Table: planning_summaries
+//   set_planning_summaries_org_id_trigger: CREATE TRIGGER set_planning_summaries_org_id_trigger BEFORE INSERT ON public.planning_summaries FOR EACH ROW EXECUTE FUNCTION set_org_id_on_insert()
 // Table: profiles
 //   audit_profiles_trigger: CREATE TRIGGER audit_profiles_trigger AFTER INSERT OR DELETE OR UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION log_profile_audit()
 // Table: recurring_transactions
@@ -2431,6 +2509,8 @@ export const Constants = {
 //   CREATE UNIQUE INDEX coupons_code_key ON public.coupons USING btree (code)
 // Table: dicas_lidas
 //   CREATE UNIQUE INDEX dicas_lidas_organization_id_dica_id_key ON public.dicas_lidas USING btree (organization_id, dica_id)
+// Table: planning_summaries
+//   CREATE UNIQUE INDEX planning_summaries_organization_id_month_year_key ON public.planning_summaries USING btree (organization_id, month, year)
 // Table: plans
 //   CREATE UNIQUE INDEX plans_name_key ON public.plans USING btree (name)
 // Table: subscriptions
