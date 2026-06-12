@@ -227,8 +227,11 @@ export function Sidebar({
               id="sidebar-item-Conciliacao"
               icon={ShieldCheck}
               label="Conciliação"
-              to="/reconciliation"
-              isActive={pathname === '/reconciliation'}
+              to="/payments?tab=reconciliation"
+              isActive={
+                pathname === '/payments' &&
+                location.search.includes('tab=reconciliation')
+              }
               onClick={onNavigate}
             />
             <SidebarItem
@@ -252,7 +255,10 @@ export function Sidebar({
               icon={Tag}
               label="Transações"
               to="/payments"
-              isActive={pathname === '/payments'}
+              isActive={
+                pathname === '/payments' &&
+                !location.search.includes('tab=reconciliation')
+              }
               onClick={onNavigate}
             />
             {role === 'admin' && (

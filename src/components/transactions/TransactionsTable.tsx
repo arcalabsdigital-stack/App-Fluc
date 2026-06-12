@@ -55,14 +55,14 @@ import {
 interface TransactionsTableProps {
   data: Transacao[]
   onEdit: (transaction: Transacao) => void
-  onImportSuccess?: () => void
+  onChange?: () => void
   isVisitor?: boolean
 }
 
 export function TransactionsTable({
   data,
   onEdit,
-  onImportSuccess,
+  onChange,
   isVisitor = false,
 }: TransactionsTableProps) {
   const { categories, deleteTransaction, registerPayment } =
@@ -95,9 +95,11 @@ export function TransactionsTable({
     }
   }
 
-  const getCategoryName = (id: string) => {
-    const category = categories.find((c) => c.id === id)
-    return category ? category.nome : 'Desconhecido'
+  const getCategoryName = (idOrName: string) => {
+    if (!idOrName) return 'Desconhecido'
+    const category = categories.find((c) => c.id === idOrName)
+    if (category) return category.nome
+    return idOrName
   }
 
   const formatCurrency = (value: number) => {
@@ -147,6 +149,10 @@ export function TransactionsTable({
         await deleteTransaction(id)
       }
       setSelectedIds([])
+      toast.success('Transações excluídas com sucesso!')
+      if (onChange) onChange()
+    } catch (error) {
+      toast.error('Erro ao excluir transações')
     } finally {
       setIsDeletingBulk(false)
     }
@@ -158,7 +164,7 @@ export function TransactionsTable({
         {!isVisitor && (
           <div className="flex justify-end items-center flex-wrap gap-4">
             <div className="flex items-center gap-2">
-              <ImportTransactions onSuccess={onImportSuccess} />
+              <ImportTransactions onSuccess={onChange} />
             </div>
           </div>
         )}
@@ -215,7 +221,7 @@ export function TransactionsTable({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {!isVisitor && <ImportTransactions onSuccess={onImportSuccess} />}
+          {!isVisitor && <ImportTransactions onSuccess={onChange} />}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
@@ -447,7 +453,17 @@ export function TransactionsTable({
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
                             <AlertDialogAction
                               className="bg-red-600 hover:bg-red-700"
-                              onClick={() => deleteTransaction(transaction.id)}
+                              onClick={async () => {
+                                try {
+                                  await deleteTransaction(transaction.id)
+                                  toast.success(
+                                    'Transação excluída com sucesso!',
+                                  )
+                                  if (onChange) onChange()
+                                } catch (error) {
+                                  toast.error('Erro ao excluir transação')
+                                }
+                              }}
                             >
                               Excluir
                             </AlertDialogAction>

@@ -14,12 +14,16 @@ import { Transacao } from '@/lib/types'
 import { useAuth } from '@/hooks/use-auth'
 import AccessDenied from '@/pages/AccessDenied'
 import { WeeklyMaturityCard } from '@/components/payments/WeeklyMaturityCard'
+import { useSearchParams } from 'react-router-dom'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ReconciliationPanel } from '@/components/payments/ReconciliationPanel'
 
 const Payments = () => {
   const { transactions, fetchTransactions, isLoading } = useTransactionStore()
   const { role } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const currentTab = searchParams.get('tab') || 'transactions'
+
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] =
     useState<Transacao | null>(null)
@@ -44,7 +48,7 @@ const Payments = () => {
     return () => clearTimeout(timer)
   }, [filters, fetchTransactions, role]) // fetchTransactions is stable
 
-  const handleImportSuccess = () => {
+  const handleChange = () => {
     if (role) {
       fetchTransactions(filters, role)
     }
@@ -67,7 +71,11 @@ const Payments = () => {
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6 animate-fade-in pb-10 px-0 sm:px-0">
-      <Tabs defaultValue="transactions" className="w-full">
+      <Tabs
+        value={currentTab}
+        onValueChange={(val) => setSearchParams({ tab: val })}
+        className="w-full"
+      >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
@@ -95,7 +103,7 @@ const Payments = () => {
 
             {!isVisitor && (
               <div className="flex gap-2 w-full sm:w-auto">
-                <ImportTransactions onSuccess={handleImportSuccess} />
+                <ImportTransactions onSuccess={handleChange} />
                 <Button
                   onClick={handleCreate}
                   className="w-full sm:w-auto shadow-lg hover:shadow-xl transition-all"
@@ -124,7 +132,7 @@ const Payments = () => {
             <TransactionsTable
               data={transactions}
               onEdit={handleEdit}
-              onImportSuccess={handleImportSuccess}
+              onChange={handleChange}
               isVisitor={isVisitor}
             />
           )}
