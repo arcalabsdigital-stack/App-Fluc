@@ -1,12 +1,21 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import {
+  startOfMonth,
+  endOfMonth,
+  addMonths,
+  isSameMonth,
+  format,
+} from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -14,85 +23,81 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { dashboardService } from '@/services/dashboardService'
-import { projectionsService } from '@/services/projectionsService'
-import { addMonths, format, startOfMonth, endOfMonth } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { AlertTriangle, CheckCircle, Loader2, PlayCircle } from 'lucide-react'
+import {
+  projectionsService,
+  MonthlyProjection,
+} from '@/services/projectionsService'
 import { cn } from '@/lib/utils'
+import { Transacao } from '@/lib/types'
+import { Loader2, ArrowRight } from 'lucide-react'
 
-const TIPOS_DECISAO = [
-  'Contratar funcionário',
-  'Demitir funcionário',
-  'Comprar equipamento',
-  'Atrasar pagamento de fornecedor',
-  'Antecipar recebimento de cliente',
-  'Aumentar preço dos produtos',
-  'Reduzir custo operacional',
-  'Outro',
-]
-
-function calculateScore(totalRec: number, net: number, planRec: number) {
-  let revScore = 0
-  if (planRec > 0) {
-    const revRatio = totalRec / planRec
-    revScore = Math.min(revRatio * 40, 40)
-  } else if (totalRec > 0) {
-    revScore = 40
-  }
-
-  let marginScore = 0
-  const margin = totalRec > 0 ? net / totalRec : 0
-  if (margin >= 0.2) marginScore = 35
-  else if (margin > 0) marginScore = (margin / 0.2) * 35
-
-  let cashScore = 0
-  if (net > 0) cashScore = 25
-  else if (net === 0 && totalRec > 0) cashScore = 10
-
-  return Math.round(revScore + marginScore + cashScore)
+interface SimulacaoModalProps {
+  isOpen: boolean
+  onOpenChange: (open: boolean) => void
+  selectedDate: Date
 }
 
 export function SimulacaoModal({
   isOpen,
   onOpenChange,
-}: {
-  isOpen: boolean
-  onOpenChange: (open: boolean) => void
-}) {
-  const [step, setStep] = useState<'form' | 'loading' | 'results'>('form')
+  selectedDate,
+}: SimulacaoModalProps) {
+  const [loading, setLoading] = useState(false)
+  const [transactions, setTransactions] = useState<Transacao[]>([])
+  const [projections, setProjections] = useState<MonthlyProjection[]>([])
 
-  const next12Months = useMemo(() => {
-    return Array.from({ length: 12 }).map((_, i) => {
-      const d = addMonths(new Date(), i)
-      return {
-        value: `${d.getFullYear()}-${d.getMonth()}`,
-        label: format(d, 'MMMM/yyyy', { locale: ptBR }),
-        date: d,
+  const [type, setType] = useState<'Receita' | 'Despesa'>('Despesa')
+  const [value, setValue] = useState<string>('')
+  const [frequency, setFrequency] = useState<'Unico' | 'Recorrente'>('Unico')
+  const [startMonthOffset, setStartMonthOffset] = useState<string>('0')
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    let isMounted = true
+    const loadData = async () => {
+      setLoading(true)
+      try {
+        const start = startOfMonth(selectedDate)
+        const end = endOfMonth(addMonths(selectedDate, 2))
+
+        const txs = await dashboardService.getTransactionsForPeriod(start, end)
+
+        const projPromises = [0, 1, 2].map((offset) => {
+          const d = addMonths(selectedDate, offset)
+          return projectionsService.getProjections(
+            d.getMonth() + 1,
+            d.getFullYear(),
+          )
+        })
+
+        const projs = (await Promise.all(projPromises)).flat()
+
+        if (isMounted) {
+          setTransactions(txs)
+          setProjections(projs)
+        }
+      } catch (err) {
+        console.error(err)
+      } finally {
+        if (isMounted) setLoading(false)
       }
-    })
-  }, [])
-
-  const [tipo, setTipo] = useState(TIPOS_DECISAO[0])
-  const [descricao, setDescricao] = useState('')
-  const [valor, setValor] = useState('')
-  const [mesInicio, setMesInicio] = useState(next12Months[0].value)
-  const [duracao, setDuracao] = useState('Único (só um mês)')
-  const [results, setResults] = useState<any[]>([])
-
-  const handleOpenChange = (o: boolean) => {
-    if (!o) {
-      setTimeout(() => {
-        setStep('form')
-        setValor('')
-        setDescricao('')
-        setResults([])
-      }, 300)
     }
-    onOpenChange(o)
+
+    loadData()
+    return () => {
+      isMounted = false
+    }
+  }, [isOpen, selectedDate])
+
+  const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, '')
+    if (val) {
+      val = (parseInt(val, 10) / 100).toFixed(2).replace('.', ',')
+      val = val.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+    }
+    setValue(val)
   }
 
   const formatCurrency = (val: number) => {
@@ -102,405 +107,398 @@ export function SimulacaoModal({
     }).format(val)
   }
 
-  const handleSimular = async () => {
-    const impactValue = parseFloat(valor)
-    if (isNaN(impactValue)) return
+  const monthsData = useMemo(() => {
+    return [0, 1, 2].map((offset) => {
+      const currentMonthDate = addMonths(selectedDate, offset)
 
-    setStep('loading')
-    try {
-      const [yearStr, monthStr] = mesInicio.split('-')
-      const startDate = new Date(parseInt(yearStr), parseInt(monthStr), 1)
+      const monthTxs = transactions.filter((t) =>
+        isSameMonth(t.data, currentMonthDate),
+      )
+      const monthProjs = projections.filter(
+        (p) =>
+          p.month === currentMonthDate.getMonth() + 1 &&
+          p.year === currentMonthDate.getFullYear(),
+      )
 
-      const monthsData = []
+      const numericValue =
+        parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0
+      let impact = 0
+      const startOffset = parseInt(startMonthOffset, 10)
 
-      for (let i = 0; i < 3; i++) {
-        const monthDate = addMonths(startDate, i)
-        const m = monthDate.getMonth() + 1
-        const y = monthDate.getFullYear()
-
-        const [transactions, projections] = await Promise.all([
-          dashboardService.getTransactionsForPeriod(
-            startOfMonth(monthDate),
-            endOfMonth(monthDate),
-          ),
-          projectionsService.getProjections(m, y),
-        ])
-
-        monthsData.push({ monthDate, transactions, projections })
+      if (offset >= startOffset) {
+        if (frequency === 'Recorrente' || offset === startOffset) {
+          impact = type === 'Receita' ? numericValue : -numericValue
+        }
       }
 
-      const computedResults = monthsData.map((mData, i) => {
-        const isImpactApplied = duracao === 'Recorrente' || i === 0
-        const currentImpact = isImpactApplied ? impactValue : 0
-
-        const realizedReceitas = mData.transactions
-          .filter(
-            (t: any) =>
-              t.tipo_id === 'Receita' &&
-              (t.status === 'pago' || t.status === 'parcial'),
-          )
-          .reduce((acc: number, t: any) => acc + (t.amount_paid || 0), 0)
-
-        const realizedDespesas = mData.transactions
-          .filter(
-            (t: any) =>
-              t.tipo_id === 'Despesa' &&
-              (t.status === 'pago' || t.status === 'parcial'),
-          )
-          .reduce((acc: number, t: any) => acc + (t.amount_paid || 0), 0)
-
-        const pendingReceitas = mData.transactions
-          .filter((t: any) => t.tipo_id === 'Receita' && t.status !== 'pago')
-          .reduce(
-            (acc: number, t: any) =>
-              acc + ((t.amount || 0) - (t.amount_paid || 0)),
-            0,
-          )
-
-        const pendingDespesas = mData.transactions
-          .filter((t: any) => t.tipo_id === 'Despesa' && t.status !== 'pago')
-          .reduce(
-            (acc: number, t: any) =>
-              acc + ((t.amount || 0) - (t.amount_paid || 0)),
-            0,
-          )
-
-        const planejadoReceitas = mData.projections
-          .filter((p: any) => p.type === 'Receita')
-          .reduce((acc: number, p: any) => acc + (p.planned_amount || 0), 0)
-
-        const planejadoDespesas = mData.projections
-          .filter((p: any) => p.type === 'Despesa')
-          .reduce((acc: number, p: any) => acc + (p.planned_amount || 0), 0)
-
-        const totalProjetadoReceitas = Math.max(
-          realizedReceitas + pendingReceitas,
-          planejadoReceitas,
+      const realizedReceitas = monthTxs
+        .filter(
+          (t) =>
+            t.tipo_id === 'Receita' &&
+            (t.status === 'pago' || t.status === 'parcial'),
         )
-        const totalProjetadoDespesas = Math.max(
-          realizedDespesas + pendingDespesas,
-          planejadoDespesas,
+        .reduce((acc, t) => acc + (t.amount_paid || 0), 0)
+      const realizedDespesas = monthTxs
+        .filter(
+          (t) =>
+            t.tipo_id === 'Despesa' &&
+            (t.status === 'pago' || t.status === 'parcial'),
         )
+        .reduce((acc, t) => acc + (t.amount_paid || 0), 0)
 
-        const projetadoNet = totalProjetadoReceitas - totalProjetadoDespesas
-        const planejadoNet = planejadoReceitas - planejadoDespesas
-        const baseGap = projetadoNet - planejadoNet
+      let simRealizedReceitas = realizedReceitas
+      let simRealizedDespesas = realizedDespesas
 
-        const baseScore = calculateScore(
-          totalProjetadoReceitas,
-          projetadoNet,
-          planejadoReceitas,
-        )
+      if (impact > 0) {
+        simRealizedReceitas += impact
+      } else if (impact < 0) {
+        simRealizedDespesas += Math.abs(impact)
+      }
 
-        const simProjetadoReceitas =
-          totalProjetadoReceitas + (currentImpact > 0 ? currentImpact : 0)
-        const simProjetadoDespesas =
-          totalProjetadoDespesas +
-          (currentImpact < 0 ? Math.abs(currentImpact) : 0)
-        const simProjetadoNet = simProjetadoReceitas - simProjetadoDespesas
-        const simGap = simProjetadoNet - planejadoNet
+      const planejadoReceitas = monthProjs
+        .filter((p) => p.type === 'Receita')
+        .reduce((acc, p) => acc + p.planned_amount, 0)
+      const planejadoDespesas = monthProjs
+        .filter((p) => p.type === 'Despesa')
+        .reduce((acc, p) => acc + p.planned_amount, 0)
 
-        const simScore = calculateScore(
-          simProjetadoReceitas,
-          simProjetadoNet,
-          planejadoReceitas,
-        )
+      const calcScore = (
+        realRev: number,
+        realDesp: number,
+        planRev: number,
+        planDesp: number,
+      ) => {
+        const realNet = realRev - realDesp
+        const planNet = planRev - planDesp
+        const gap = realNet - planNet
 
-        return {
-          monthLabel: format(mData.monthDate, 'MMM/yyyy', { locale: ptBR }),
-          baseScore,
-          baseGap,
-          simScore,
-          simGap,
-          impactApplied: isImpactApplied,
+        let revScore = 0
+        if (planRev > 0) {
+          revScore = Math.min((realRev / planRev) * 40, 40)
+        } else if (realRev > 0) {
+          revScore = 40
         }
-      })
 
-      setResults(computedResults)
-      setStep('results')
-    } catch (error) {
-      console.error(error)
-      setStep('form')
-    }
-  }
+        let marginScore = 0
+        const margin = realRev > 0 ? realNet / realRev : 0
+        if (margin >= 0.2) marginScore = 35
+        else if (margin > 0) marginScore = (margin / 0.2) * 35
 
-  const avgSimScore =
-    results.length > 0
-      ? results.reduce((acc, r) => acc + r.simScore, 0) / results.length
-      : 0
+        let cashScore = 0
+        if (realNet > 0) cashScore = 25
+        else if (realNet === 0 && realRev > 0) cashScore = 10
+
+        const score = Math.round(revScore + marginScore + cashScore)
+
+        return { score, gap, realRev, realDesp, realNet, planNet }
+      }
+
+      const current = calcScore(
+        realizedReceitas,
+        realizedDespesas,
+        planejadoReceitas,
+        planejadoDespesas,
+      )
+      const simulated = calcScore(
+        simRealizedReceitas,
+        simRealizedDespesas,
+        planejadoReceitas,
+        planejadoDespesas,
+      )
+
+      return {
+        date: currentMonthDate,
+        current,
+        simulated,
+        impact,
+      }
+    })
+  }, [
+    transactions,
+    projections,
+    selectedDate,
+    type,
+    value,
+    frequency,
+    startMonthOffset,
+  ])
+
+  const averageSimulatedScore = useMemo(() => {
+    if (monthsData.length === 0) return 0
+    const total = monthsData.reduce((acc, m) => acc + m.simulated.score, 0)
+    return Math.round(total / monthsData.length)
+  }, [monthsData])
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto w-[95vw]">
         <DialogHeader>
-          <DialogTitle>Simular Decisão Financeira</DialogTitle>
+          <DialogTitle>Simulador de Decisões</DialogTitle>
           <DialogDescription>
-            Visualize o impacto de uma decisão no seu Score de Saúde Financeira
-            e Fluxo de Caixa (GAP).
+            Simule o impacto de uma nova receita ou despesa na sua saúde
+            financeira nos próximos 3 meses.
           </DialogDescription>
         </DialogHeader>
 
-        {step === 'form' && (
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {loading ? (
+          <div className="flex items-center justify-center p-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2">
+            <div className="lg:col-span-4 space-y-4">
               <div className="space-y-2">
-                <Label>Tipo de decisão</Label>
-                <Select value={tipo} onValueChange={setTipo}>
+                <Label>Tipo de Impacto</Label>
+                <Select
+                  value={type}
+                  onValueChange={(v: 'Receita' | 'Despesa') => setType(v)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {TIPOS_DECISAO.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="Receita">
+                      Nova Receita / Economia (+)
+                    </SelectItem>
+                    <SelectItem value="Despesa">
+                      Nova Despesa / Gasto (-)
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>Descrição livre</Label>
+                <Label>Valor (R$)</Label>
                 <Input
-                  placeholder="Ex: contratar assistente administrativo"
-                  value={descricao}
-                  onChange={(e) => setDescricao(e.target.value)}
+                  placeholder="0,00"
+                  value={value}
+                  onChange={handleValueChange}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Valor do impacto (R$)</Label>
-                <Input
-                  type="number"
-                  placeholder="Ex: -1500 (despesa) ou 2000 (receita)"
-                  value={valor}
-                  onChange={(e) => setValor(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Valores positivos p/ receitas/economia, negativos p/ despesas
-                  extras.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Mês de início do impacto</Label>
-                <Select value={mesInicio} onValueChange={setMesInicio}>
-                  <SelectTrigger className="capitalize">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {next12Months.map((m) => (
-                      <SelectItem
-                        key={m.value}
-                        value={m.value}
-                        className="capitalize"
-                      >
-                        {m.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <Label>Duração</Label>
-                <Select value={duracao} onValueChange={setDuracao}>
+                <Label>Frequência</Label>
+                <Select
+                  value={frequency}
+                  onValueChange={(v: 'Unico' | 'Recorrente') => setFrequency(v)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Único (só um mês)">
-                      Único (só um mês)
-                    </SelectItem>
-                    <SelectItem value="Recorrente (todos os meses seguintes)">
-                      Recorrente (todos os meses seguintes)
+                    <SelectItem value="Unico">Impacto Único</SelectItem>
+                    <SelectItem value="Recorrente">
+                      Impacto Recorrente
                     </SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Mês de Início</Label>
+                <Select
+                  value={startMonthOffset}
+                  onValueChange={setStartMonthOffset}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[0, 1, 2].map((offset) => {
+                      const d = addMonths(selectedDate, offset)
+                      return (
+                        <SelectItem
+                          key={offset}
+                          value={offset.toString()}
+                          className="capitalize"
+                        >
+                          {format(d, 'MMMM yyyy', { locale: ptBR })}
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div
+                className={cn(
+                  'p-4 rounded-lg mt-6 text-sm font-medium',
+                  averageSimulatedScore >= 70
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                    : averageSimulatedScore >= 40
+                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                      : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+                )}
+              >
+                {averageSimulatedScore >= 70 &&
+                  'Essa decisão fortalece sua saúde financeira. Pode seguir.'}
+                {averageSimulatedScore >= 40 &&
+                  averageSimulatedScore < 70 &&
+                  'Atenção: essa decisão pressiona seu fluxo. Considere adiar ou compensar.'}
+                {averageSimulatedScore < 40 &&
+                  'Risco: essa decisão compromete sua saúde financeira. Recomendação: adie.'}
               </div>
             </div>
-          </div>
-        )}
 
-        {step === 'loading' && (
-          <div className="py-12 flex flex-col items-center justify-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">
-              Calculando projeções e simulando cenários...
-            </p>
-          </div>
-        )}
+            <div className="lg:col-span-8 space-y-4">
+              {monthsData.map((data, i) => (
+                <div key={i} className="border rounded-xl p-4 bg-muted/30">
+                  <h3 className="font-semibold text-base mb-4 capitalize flex items-center gap-2">
+                    {format(data.date, 'MMMM yyyy', { locale: ptBR })}
+                    {data.impact !== 0 && (
+                      <span
+                        className={cn(
+                          'text-xs px-2 py-0.5 rounded-full font-bold ml-2',
+                          data.impact > 0
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+                        )}
+                      >
+                        {data.impact > 0 ? '+' : '-'}{' '}
+                        {formatCurrency(Math.abs(data.impact))}
+                      </span>
+                    )}
+                  </h3>
 
-        {step === 'results' && (
-          <div className="space-y-6 py-4 animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {results.map((res, idx) => (
-                <div
-                  key={idx}
-                  className="border rounded-xl p-4 space-y-4 bg-muted/20"
-                >
-                  <h4 className="font-semibold text-center capitalize border-b pb-2 text-sm">
-                    {res.monthLabel}
-                  </h4>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase text-center">
+                  <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                    <div className="space-y-3">
+                      <div className="text-sm font-medium text-muted-foreground border-b pb-1 mb-2">
                         Cenário Atual
-                      </p>
-                      <div className="bg-background p-2 rounded-lg border text-center space-y-2">
-                        <div>
-                          <p className="text-[10px] text-muted-foreground mb-0.5">
-                            Score
-                          </p>
-                          <p
-                            className={cn(
-                              'font-bold text-sm',
-                              res.baseScore >= 70
-                                ? 'text-green-600'
-                                : res.baseScore >= 40
-                                  ? 'text-yellow-600'
-                                  : 'text-red-600',
-                            )}
-                          >
-                            {res.baseScore}/100
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-muted-foreground mb-0.5">
-                            GAP
-                          </p>
-                          <p
-                            className={cn(
-                              'font-bold text-xs',
-                              res.baseGap >= 0
-                                ? 'text-green-600'
-                                : 'text-red-600',
-                            )}
-                            title={formatCurrency(res.baseGap)}
-                          >
-                            {formatCurrency(res.baseGap)}
-                          </p>
-                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Score</span>
+                        <span
+                          className={cn(
+                            'font-bold',
+                            data.current.score >= 80
+                              ? 'text-green-500'
+                              : data.current.score >= 50
+                                ? 'text-yellow-500'
+                                : 'text-red-500',
+                          )}
+                        >
+                          {data.current.score}/100
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">GAP</span>
+                        <span
+                          className={cn(
+                            'font-bold',
+                            data.current.gap >= 0
+                              ? 'text-green-500'
+                              : 'text-red-500',
+                          )}
+                        >
+                          {formatCurrency(data.current.gap)}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Receitas</span>
+                        <span
+                          className="font-medium text-green-600 truncate"
+                          title={formatCurrency(data.current.realRev)}
+                        >
+                          {formatCurrency(data.current.realRev)}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Despesas</span>
+                        <span
+                          className="font-medium text-red-600 truncate"
+                          title={formatCurrency(data.current.realDesp)}
+                        >
+                          {formatCurrency(data.current.realDesp)}
+                        </span>
                       </div>
                     </div>
 
-                    <div
-                      className={cn(
-                        'space-y-1',
-                        !res.impactApplied && 'opacity-60',
-                      )}
-                    >
-                      <p className="text-[10px] font-medium text-primary uppercase text-center">
-                        Com Decisão
-                      </p>
-                      <div
-                        className={cn(
-                          'p-2 rounded-lg border text-center space-y-2',
-                          res.impactApplied
-                            ? 'bg-primary/5 border-primary/20 shadow-sm'
-                            : 'bg-background',
-                        )}
-                      >
-                        <div>
-                          <p className="text-[10px] text-muted-foreground mb-0.5">
-                            Score
-                          </p>
-                          <p
+                    <div className="space-y-3 relative">
+                      <div className="absolute -left-2 sm:-left-3 top-0 bottom-0 w-px bg-border"></div>
+                      <div className="text-sm font-medium text-primary border-b pb-1 mb-2 flex items-center gap-1">
+                        Com Decisão <ArrowRight className="w-3 h-3" />
+                      </div>
+
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Score</span>
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <span
                             className={cn(
-                              'font-bold text-sm',
-                              res.simScore >= 70
-                                ? 'text-green-600'
-                                : res.simScore >= 40
-                                  ? 'text-yellow-600'
-                                  : 'text-red-600',
+                              'font-bold',
+                              data.simulated.score >= 80
+                                ? 'text-green-500'
+                                : data.simulated.score >= 50
+                                  ? 'text-yellow-500'
+                                  : 'text-red-500',
                             )}
                           >
-                            {res.simScore}/100
-                          </p>
+                            {data.simulated.score}/100
+                          </span>
+                          {data.simulated.score !== data.current.score && (
+                            <span
+                              className={cn(
+                                'text-[10px] sm:text-xs',
+                                data.simulated.score > data.current.score
+                                  ? 'text-green-500'
+                                  : 'text-red-500',
+                              )}
+                            >
+                              (
+                              {data.simulated.score > data.current.score
+                                ? '+'
+                                : ''}
+                              {data.simulated.score - data.current.score})
+                            </span>
+                          )}
                         </div>
-                        <div>
-                          <p className="text-[10px] text-muted-foreground mb-0.5">
-                            GAP
-                          </p>
-                          <p
+                      </div>
+
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">GAP</span>
+                        <div className="flex items-center gap-2">
+                          <span
                             className={cn(
-                              'font-bold text-xs',
-                              res.simGap >= 0
-                                ? 'text-green-600'
-                                : 'text-red-600',
+                              'font-bold',
+                              data.simulated.gap >= 0
+                                ? 'text-green-500'
+                                : 'text-red-500',
                             )}
-                            title={formatCurrency(res.simGap)}
                           >
-                            {formatCurrency(res.simGap)}
-                          </p>
+                            {formatCurrency(data.simulated.gap)}
+                          </span>
                         </div>
+                      </div>
+
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Receitas</span>
+                        <span
+                          className="font-medium text-green-600 truncate"
+                          title={formatCurrency(data.simulated.realRev)}
+                        >
+                          {formatCurrency(data.simulated.realRev)}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Despesas</span>
+                        <span
+                          className="font-medium text-red-600 truncate"
+                          title={formatCurrency(data.simulated.realDesp)}
+                        >
+                          {formatCurrency(data.simulated.realDesp)}
+                        </span>
                       </div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-
-            <div
-              className={cn(
-                'p-4 rounded-xl border flex items-start gap-3',
-                avgSimScore >= 70
-                  ? 'bg-green-50 border-green-200 text-green-900 dark:bg-green-950/20 dark:border-green-900/50 dark:text-green-200'
-                  : avgSimScore >= 40
-                    ? 'bg-yellow-50 border-yellow-200 text-yellow-900 dark:bg-yellow-950/20 dark:border-yellow-900/50 dark:text-yellow-200'
-                    : 'bg-red-50 border-red-200 text-red-900 dark:bg-red-950/20 dark:border-red-900/50 dark:text-red-200',
-              )}
-            >
-              {avgSimScore >= 70 ? (
-                <CheckCircle className="h-5 w-5 shrink-0 mt-0.5" />
-              ) : (
-                <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-              )}
-
-              <div>
-                <h4 className="font-semibold text-sm mb-1">
-                  Recomendação Automatizada
-                </h4>
-                <p className="text-sm">
-                  {avgSimScore >= 70
-                    ? 'Essa decisão fortalece sua saúde financeira. Pode seguir.'
-                    : avgSimScore >= 40
-                      ? 'Atenção: essa decisão pressiona seu fluxo. Considere adiar ou compensar com aumento de receita.'
-                      : 'Risco: essa decisão compromete sua saúde financeira. Recomendação: adie até melhorar receitas ou reduzir despesas.'}
-                </p>
-              </div>
-            </div>
           </div>
         )}
-
-        <DialogFooter className="sm:justify-between">
-          {step === 'results' ? (
-            <>
-              <Button variant="outline" onClick={() => setStep('form')}>
-                Nova Simulação
-              </Button>
-              <Button onClick={() => handleOpenChange(false)}>Concluir</Button>
-            </>
-          ) : (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => handleOpenChange(false)}
-                disabled={step === 'loading'}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSimular}
-                disabled={!valor || step === 'loading'}
-                className="gap-2"
-              >
-                <PlayCircle className="h-4 w-4" /> Simular Decisão
-              </Button>
-            </>
-          )}
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

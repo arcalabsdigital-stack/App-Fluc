@@ -384,6 +384,7 @@ export default function Diagnostico() {
           <SimulacaoModal
             isOpen={isSimulacaoOpen}
             onOpenChange={setIsSimulacaoOpen}
+            selectedDate={selectedDate}
           />
 
           {metrics.hasProjetado && (
