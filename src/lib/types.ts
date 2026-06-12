@@ -32,6 +32,8 @@ export interface CategoriaSimplificada {
   natureza_contabil: string
   efeito_caixa: string
   accounting_group: string
+  icon?: string | null
+  color?: string | null
 }
 
 export interface DicaContextual {

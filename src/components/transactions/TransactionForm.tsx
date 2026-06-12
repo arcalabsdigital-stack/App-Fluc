@@ -1,10 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { addMonths, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { CalendarIcon, Loader2, PlusCircle, Info } from 'lucide-react'
+import {
+  CalendarIcon,
+  Loader2,
+  PlusCircle,
+  Info,
+  Home,
+  ShoppingCart,
+  Briefcase,
+  Car,
+  Coffee,
+  Zap,
+  Heart,
+  Smile,
+  Star,
+  Activity,
+} from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -55,13 +70,51 @@ import useTransactionStore from '@/stores/useTransactionStore'
 import { accountService } from '@/services/accountService'
 import { toast } from 'sonner'
 
-const TIPO_GRUPOS = [
+const STANDARD_GROUPS = [
   'RECEITAS',
   'CUSTOS DIRETOS',
+  'CUSTOS FIXOS',
   'DESPESAS OPERACIONAIS',
+  'INVESTIMENTOS',
+  'DESPESAS PESSOAIS',
   'BENS E DIREITOS',
   'DÍVIDAS',
 ]
+
+const AVAILABLE_ICONS = [
+  { name: 'Home', icon: Home },
+  { name: 'ShoppingCart', icon: ShoppingCart },
+  { name: 'Briefcase', icon: Briefcase },
+  { name: 'Car', icon: Car },
+  { name: 'Coffee', icon: Coffee },
+  { name: 'Zap', icon: Zap },
+  { name: 'Heart', icon: Heart },
+  { name: 'Smile', icon: Smile },
+  { name: 'Star', icon: Star },
+  { name: 'Activity', icon: Activity },
+]
+
+const AVAILABLE_COLORS = [
+  '#ef4444',
+  '#f97316',
+  '#f59e0b',
+  '#22c55e',
+  '#10b981',
+  '#06b6d4',
+  '#3b82f6',
+  '#6366f1',
+  '#8b5cf6',
+  '#d946ef',
+  '#ec4899',
+]
+
+function normalizeString(str: string) {
+  return str
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
 
 const formSchema = z.object({
   data: z.date({
@@ -122,6 +175,18 @@ export function TransactionForm({
   const [showCustomCatDialog, setShowCustomCatDialog] = useState(false)
   const [customCatName, setCustomCatName] = useState('')
   const [customCatGroup, setCustomCatGroup] = useState('RECEITAS')
+  const [isNewGroup, setIsNewGroup] = useState(false)
+  const [newGroupName, setNewGroupName] = useState('')
+  const [customCatColor, setCustomCatColor] = useState(AVAILABLE_COLORS[0])
+  const [customCatIcon, setCustomCatIcon] = useState('Zap')
+
+  const uniqueGroups = useMemo(() => {
+    const customGroups = categoriasSimplificadas
+      .map((c) => c.tipo_grupo)
+      .filter((g) => !STANDARD_GROUPS.includes(g))
+
+    return [...new Set([...STANDARD_GROUPS, ...customGroups])]
+  }, [categoriasSimplificadas])
 
   const [currentTip, setCurrentTip] = useState<{
     id: string
@@ -264,18 +329,55 @@ export function TransactionForm({
   async function handleCreateCustomCategory() {
     if (!customCatName || customCatName.length < 2) return
 
+    const normalizedName = normalizeString(customCatName)
+    const normalizedGroup = normalizeString(
+      isNewGroup ? newGroupName : customCatGroup,
+    )
+
+    const categoryExists = categoriasSimplificadas.some(
+      (c) => normalizeString(c.nome_simplificado) === normalizedName,
+    )
+
+    if (categoryExists) {
+      toast.error('A categoria ou grupo já existe')
+      return
+    }
+
+    let finalGroup = customCatGroup
+    if (isNewGroup) {
+      if (!newGroupName) return
+      const groupExists = uniqueGroups.some(
+        (g) => normalizeString(g) === normalizedGroup,
+      )
+      if (groupExists) {
+        toast.error('A categoria ou grupo já existe')
+        return
+      }
+      finalGroup = newGroupName
+    }
+
     let nat = 'Despesa',
       efeito = 'Caixa_Negativo',
       acc = 'Resultado'
-    if (customCatGroup === 'RECEITAS') {
+
+    const lowerGroup = finalGroup.toLowerCase()
+    if (lowerGroup.includes('receita')) {
       nat = 'Receita'
       efeito = 'Caixa_Positivo'
       acc = 'Resultado'
-    } else if (customCatGroup === 'BENS E DIREITOS') {
+    } else if (
+      lowerGroup.includes('bens') ||
+      lowerGroup.includes('direitos') ||
+      lowerGroup.includes('investimentos')
+    ) {
       nat = 'Ativo'
       efeito = 'Caixa_Negativo'
       acc = 'Ativo Não-Circulante'
-    } else if (customCatGroup === 'DÍVIDAS') {
+    } else if (
+      lowerGroup.includes('dívida') ||
+      lowerGroup.includes('divida') ||
+      lowerGroup.includes('passivo')
+    ) {
       nat = 'Passivo'
       efeito = 'Caixa_Positivo'
       acc = 'Passivo Não-Circulante'
@@ -283,16 +385,20 @@ export function TransactionForm({
 
     const newCat = await addCategoriaSimplificada({
       nome_simplificado: customCatName,
-      tipo_grupo: customCatGroup,
+      tipo_grupo: finalGroup,
       natureza_contabil: nat,
       efeito_caixa: efeito,
       accounting_group: acc,
+      icon: customCatIcon,
+      color: customCatColor,
     })
 
     if (newCat) {
       form.setValue('categoria_id', newCat.nome_simplificado)
       setShowCustomCatDialog(false)
       setCustomCatName('')
+      setIsNewGroup(false)
+      setNewGroupName('')
       toast.success('Categoria criada!')
     }
   }
@@ -319,11 +425,13 @@ export function TransactionForm({
       setIsSubmitting(true)
 
       const categoryName = selectedCat?.nome_simplificado || values.categoria_id
-      const tipoId =
+      const isReceita =
+        selectedCat?.natureza_contabil === 'Receita' ||
+        selectedCat?.efeito_caixa === 'Caixa_Positivo' ||
         selectedCat?.tipo_grupo === 'RECEITAS' ||
         selectedCat?.tipo_grupo === 'DÍVIDAS'
-          ? TipoTransacao.Receita
-          : TipoTransacao.Despesa
+
+      const tipoId = isReceita ? TipoTransacao.Receita : TipoTransacao.Despesa
 
       const finalAccountId =
         values.account_id === 'none' ? null : values.account_id
@@ -623,23 +731,38 @@ export function TransactionForm({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {TIPO_GRUPOS.map((grupo) => (
-                              <SelectGroup key={grupo}>
-                                <SelectLabel className="bg-gray-50 uppercase text-xs font-bold">
-                                  {grupo}
-                                </SelectLabel>
-                                {categoriasSimplificadas
-                                  .filter((c) => c.tipo_grupo === grupo)
-                                  .map((category) => (
+                            {uniqueGroups.map((grupo) => {
+                              const catsInGroup =
+                                categoriasSimplificadas.filter(
+                                  (c) => c.tipo_grupo === grupo,
+                                )
+                              if (catsInGroup.length === 0) return null
+                              return (
+                                <SelectGroup key={grupo}>
+                                  <SelectLabel className="bg-gray-50 uppercase text-xs font-bold">
+                                    {grupo}
+                                  </SelectLabel>
+                                  {catsInGroup.map((category) => (
                                     <SelectItem
                                       key={category.id}
                                       value={category.nome_simplificado}
                                     >
-                                      {category.nome_simplificado}
+                                      <div className="flex items-center gap-2">
+                                        {category.color && (
+                                          <div
+                                            className="w-3 h-3 rounded-full"
+                                            style={{
+                                              backgroundColor: category.color,
+                                            }}
+                                          />
+                                        )}
+                                        {category.nome_simplificado}
+                                      </div>
                                     </SelectItem>
                                   ))}
-                              </SelectGroup>
-                            ))}
+                                </SelectGroup>
+                              )
+                            })}
                             <SelectGroup>
                               <Button
                                 variant="ghost"
@@ -941,10 +1064,20 @@ export function TransactionForm({
         </SheetContent>
       </Sheet>
 
-      <Dialog open={showCustomCatDialog} onOpenChange={setShowCustomCatDialog}>
+      <Dialog
+        open={showCustomCatDialog}
+        onOpenChange={(val) => {
+          setShowCustomCatDialog(val)
+          if (!val) {
+            setIsNewGroup(false)
+            setNewGroupName('')
+            setCustomCatName('')
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Nova Categoria Simplificada</DialogTitle>
+            <DialogTitle>Criar Nova Categoria</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -958,22 +1091,99 @@ export function TransactionForm({
                 placeholder="Ex: Assinatura de Software"
               />
             </div>
+
             <div className="grid gap-2">
               <label htmlFor="group" className="text-sm font-medium">
-                Tipo (Isso define a classificação contábil)
+                Grupo Principal
               </label>
-              <Select value={customCatGroup} onValueChange={setCustomCatGroup}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIPO_GRUPOS.map((g) => (
-                    <SelectItem key={g} value={g}>
-                      {g}
+              {!isNewGroup ? (
+                <Select
+                  value={customCatGroup}
+                  onValueChange={(val) => {
+                    if (val === 'NOVO_GRUPO') {
+                      setIsNewGroup(true)
+                    } else {
+                      setCustomCatGroup(val)
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um grupo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {uniqueGroups.map((g) => (
+                      <SelectItem key={g} value={g}>
+                        {g}
+                      </SelectItem>
+                    ))}
+                    <SelectItem
+                      value="NOVO_GRUPO"
+                      className="text-primary font-medium"
+                    >
+                      + Criar novo grupo...
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Nome do novo grupo"
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    autoFocus
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsNewGroup(false)
+                      setNewGroupName('')
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Cor</label>
+              <div className="flex flex-wrap gap-2">
+                {AVAILABLE_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setCustomCatColor(color)}
+                    className={cn(
+                      'w-6 h-6 rounded-full border-2 focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all',
+                      customCatColor === color
+                        ? 'border-black scale-110'
+                        : 'border-transparent hover:scale-110',
+                    )}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Ícone</label>
+              <div className="flex flex-wrap gap-2">
+                {AVAILABLE_ICONS.map(({ name, icon: IconComponent }) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => setCustomCatIcon(name)}
+                    className={cn(
+                      'p-2 rounded-md border flex items-center justify-center hover:bg-gray-50 transition-colors',
+                      customCatIcon === name
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-gray-200 text-gray-500',
+                    )}
+                  >
+                    <IconComponent className="w-5 h-5" />
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -985,7 +1195,7 @@ export function TransactionForm({
             </Button>
             <Button
               onClick={handleCreateCustomCategory}
-              disabled={!customCatName}
+              disabled={!customCatName || (isNewGroup && !newGroupName)}
             >
               Salvar
             </Button>

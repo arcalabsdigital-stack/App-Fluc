@@ -220,8 +220,10 @@ export type Database = {
       categoria_simplificada: {
         Row: {
           accounting_group: string
+          color: string | null
           criada_por_usuario: boolean | null
           efeito_caixa: string
+          icon: string | null
           id: string
           natureza_contabil: string
           nome_simplificado: string
@@ -231,8 +233,10 @@ export type Database = {
         }
         Insert: {
           accounting_group: string
+          color?: string | null
           criada_por_usuario?: boolean | null
           efeito_caixa: string
+          icon?: string | null
           id?: string
           natureza_contabil: string
           nome_simplificado: string
@@ -242,8 +246,10 @@ export type Database = {
         }
         Update: {
           accounting_group?: string
+          color?: string | null
           criada_por_usuario?: boolean | null
           efeito_caixa?: string
+          icon?: string | null
           id?: string
           natureza_contabil?: string
           nome_simplificado?: string
@@ -602,13 +608,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: 'compras_parceladas_categoria_id_fkey'
-            columns: ['category_id']
-            isOneToOne: false
-            referencedRelation: 'categories'
-            referencedColumns: ['id']
-          },
           {
             foreignKeyName: 'compras_parceladas_organization_id_fkey'
             columns: ['organization_id']
@@ -1314,6 +1313,8 @@ export const Constants = {
 //   accounting_group: character varying (not null)
 //   permite_customizacao: boolean (nullable, default: false)
 //   criada_por_usuario: boolean (nullable, default: false)
+//   icon: text (nullable)
+//   color: text (nullable)
 // Table: categories
 //   id: uuid (not null, default: gen_random_uuid())
 //   nome: text (not null)
@@ -1545,7 +1546,6 @@ export const Constants = {
 // Table: organizations
 //   PRIMARY KEY organizations_pkey: PRIMARY KEY (id)
 // Table: parcelated_transactions
-//   FOREIGN KEY compras_parceladas_categoria_id_fkey: FOREIGN KEY (category_id) REFERENCES categories(id)
 //   FOREIGN KEY compras_parceladas_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY compras_parceladas_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY compras_parceladas_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
@@ -1628,8 +1628,14 @@ export const Constants = {
 // Table: categoria_simplificada
 //   Policy "Public read global categorias_simplificada" (SELECT, PERMISSIVE) roles={public}
 //     USING: ((organization_id IS NULL) OR (organization_id = get_current_user_org_id()))
+//   Policy "Users can delete their own categorias_simplificada" (DELETE, PERMISSIVE) roles={public}
+//     USING: (organization_id = get_current_user_org_id())
 //   Policy "Users can insert categorias_simplificada" (INSERT, PERMISSIVE) roles={public}
 //     WITH CHECK: (organization_id = get_current_user_org_id())
+//   Policy "Users can read all categorias_simplificada" (SELECT, PERMISSIVE) roles={public}
+//     USING: ((organization_id IS NULL) OR (organization_id = get_current_user_org_id()))
+//   Policy "Users can update their own categorias_simplificada" (UPDATE, PERMISSIVE) roles={public}
+//     USING: (organization_id = get_current_user_org_id())
 // Table: categories
 //   Policy "authenticated_select_categories" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: true
