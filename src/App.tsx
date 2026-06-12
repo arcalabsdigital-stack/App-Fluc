@@ -23,6 +23,7 @@ import Categories from './pages/Categories'
 import AdminCoupons from './pages/admin/Coupons'
 import AdminStaff from './pages/admin/Staff'
 import Accounts from './pages/Accounts'
+import Ritual from './pages/Ritual'
 import { TransactionProvider } from '@/stores/useTransactionStore'
 import { AuthProvider } from '@/hooks/use-auth'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -57,6 +58,7 @@ const App = () => (
                 <Route path="/categories" element={<Categories />} />
                 <Route path="/admin/coupons" element={<AdminCoupons />} />
                 <Route path="/admin/staff" element={<AdminStaff />} />
+                <Route path="/ritual-do-mes" element={<Ritual />} />
               </Route>
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/checkout" element={<Checkout />} />

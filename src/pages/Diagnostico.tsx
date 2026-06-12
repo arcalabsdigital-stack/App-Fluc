@@ -31,10 +31,28 @@ import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { useDiagnostico } from '@/hooks/use-diagnostico'
+import { useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
 
 export default function Diagnostico() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const { loading, metrics } = useDiagnostico(selectedDate)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!loading && !metrics.hasProjetado) {
+      const isCurrentMonth =
+        selectedDate.getMonth() === new Date().getMonth() &&
+        selectedDate.getFullYear() === new Date().getFullYear()
+      const sessionKey = `hasSeenRitualPrompt_${selectedDate.getMonth()}_${selectedDate.getFullYear()}`
+      if (isCurrentMonth && !sessionStorage.getItem(sessionKey)) {
+        sessionStorage.setItem(sessionKey, 'true')
+        navigate(
+          `/ritual-do-mes?month=${selectedDate.getMonth() + 1}&year=${selectedDate.getFullYear()}`,
+        )
+      }
+    }
+  }, [loading, metrics.hasProjetado, selectedDate, navigate])
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -164,13 +182,26 @@ export default function Diagnostico() {
                   )}
                 >
                   {!metrics.hasProjetado
-                    ? 'Você não tem projeções para este período. Cadastre contas a pagar/receber com status Pendente para ter um diagnóstico real.'
+                    ? 'Você não tem projeções para este período. Realize o Ritual do Mês para planejar suas finanças.'
                     : metrics.score >= 80
                       ? 'Sua saúde financeira está excelente! Você tem um bom controle de suas projeções e realizações.'
                       : metrics.score >= 50
                         ? 'Sua saúde financeira está razoável, mas há espaço para melhorias entre o que foi planejado e realizado.'
                         : 'Sua saúde financeira precisa de atenção. Revise suas projeções e tente alinhar seus gastos com o planejado.'}
                 </p>
+                {!metrics.hasProjetado && (
+                  <Button
+                    className="mt-4"
+                    variant="outline"
+                    onClick={() =>
+                      navigate(
+                        `/ritual-do-mes?month=${selectedDate.getMonth() + 1}&year=${selectedDate.getFullYear()}`,
+                      )
+                    }
+                  >
+                    Iniciar Ritual do Mês
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

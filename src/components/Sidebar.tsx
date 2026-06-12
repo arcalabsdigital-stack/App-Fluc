@@ -16,6 +16,7 @@ import {
   RepeatIcon,
   Folder,
   Activity,
+  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -224,6 +225,15 @@ export function Sidebar({
               to="/diagnostico"
               isActive={pathname === '/diagnostico'}
               onClick={onNavigate}
+            />
+            <SidebarItem
+              id="sidebar-item-Ritual"
+              icon={Sparkles}
+              label="Ritual do Mês"
+              to="/ritual-do-mes"
+              isActive={pathname === '/ritual-do-mes'}
+              onClick={onNavigate}
+              badge="Novo"
             />
             <SidebarItem
               id="sidebar-item-Contas"
