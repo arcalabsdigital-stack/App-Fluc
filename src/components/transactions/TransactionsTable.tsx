@@ -164,7 +164,9 @@ export function TransactionsTable({
         {!isVisitor && (
           <div className="flex justify-end items-center flex-wrap gap-4">
             <div className="flex items-center gap-2">
-              <ImportTransactions onSuccess={onChange} />
+              <span id="btn-add-transaction">
+                <ImportTransactions onSuccess={onChange} />
+              </span>
             </div>
           </div>
         )}
@@ -221,7 +223,11 @@ export function TransactionsTable({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {!isVisitor && <ImportTransactions onSuccess={onChange} />}
+          {!isVisitor && (
+            <span id="btn-add-transaction">
+              <ImportTransactions onSuccess={onChange} />
+            </span>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
@@ -248,7 +254,10 @@ export function TransactionsTable({
           </DropdownMenu>
         </div>
       </div>
-      <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+      <div
+        id="transactions-list"
+        className="rounded-xl border bg-white shadow-sm overflow-hidden"
+      >
         <Table wrapperClassName="max-h-[calc(100vh-280px)] min-h-[300px]">
           <TableHeader className="sticky top-0 z-20 bg-gray-50 shadow-sm">
             <TableRow className="bg-gray-50 hover:bg-gray-50">

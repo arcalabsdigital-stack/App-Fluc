@@ -379,7 +379,10 @@ export default function Categories() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div
+          id="categories-list"
+          className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+        >
           {Object.entries(groupedCategories).map(([group, cats]) => (
             <div
               key={group}

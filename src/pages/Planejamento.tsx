@@ -376,7 +376,7 @@ export default function Planejamento() {
         </Card>
       </div>
 
-      <div className="flex-1 flex flex-col gap-6">
+      <div id="planning-container" className="flex-1 flex flex-col gap-6">
         <div className="flex items-center gap-3">
           <Sparkles className="w-8 h-8 text-primary" />
           <h1 className="text-2xl font-bold tracking-tight capitalize">

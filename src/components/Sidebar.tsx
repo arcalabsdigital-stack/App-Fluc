@@ -370,7 +370,7 @@ export function Sidebar({
               label="Como Funciona"
               onClick={() => {
                 if (onNavigate) onNavigate()
-                useTourStore.getState().startTour()
+                useTourStore.getState().startTour(true)
               }}
             />
           </div>

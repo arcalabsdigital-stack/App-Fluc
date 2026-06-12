@@ -73,7 +73,10 @@ export default function Diagnostico() {
           Meu Diagnóstico
         </h2>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-between sm:justify-start flex-wrap sm:flex-nowrap">
+        <div
+          id="month-filters"
+          className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-between sm:justify-start flex-wrap sm:flex-nowrap"
+        >
           <Button
             onClick={() => setIsSimulacaoOpen(true)}
             className="gap-2 w-full sm:w-auto order-last sm:order-first"
