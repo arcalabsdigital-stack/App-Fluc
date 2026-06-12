@@ -48,7 +48,90 @@ const ICON_NAMES = [
   'Music',
   'User',
   'Receipt',
+  'Building2',
+  'Users',
+  'Landmark',
+  'Settings',
+  'HandCoins',
+  'Boxes',
+  'Hammer',
+  'RefreshCcw',
+  'Cloud',
+  'Truck',
+  'Calculator',
+  'Factory',
 ]
+
+const getSemanticIcon = (nome: string) => {
+  const name = nome.toLowerCase().trim()
+
+  if (name === 'aluguel e condomínio') return 'Building2'
+  if (name === 'reuniões com clientes') return 'Users'
+  if (name === 'salários e encargos') return 'Wallet'
+  if (name === 'empréstimos bancários') return 'Landmark'
+  if (name === 'financiamentos') return 'Home'
+  if (name === 'personalizada') return 'Settings'
+  if (name === 'prestação de serviços') return 'Briefcase'
+  if (name === 'vendas de produtos') return 'ShoppingCart'
+  if (name === 'aplicações financeiras') return 'TrendingUp'
+  if (name === 'resgate de investimentos') return 'HandCoins'
+  if (name === 'estoque de produtos') return 'Boxes'
+  if (name === 'máquinas e equipamentos') return 'Monitor'
+  if (name === 'reformas e instalações') return 'Hammer'
+  if (
+    name === 'pró-labore / retirada' ||
+    name === 'pró-labore' ||
+    name === 'retirada'
+  )
+    return 'User'
+  if (name === 'reembolsos pessoais') return 'RefreshCcw'
+  if (
+    name === 'assinaturas e softwares (saas)' ||
+    name === 'assinaturas e softwares'
+  )
+    return 'Cloud'
+  if (name === 'serviços de terceiros') return 'Truck'
+  if (name === 'impostos sobre vendas') return 'Calculator'
+  if (name === 'matéria-prima') return 'Factory'
+
+  return null
+}
+
+const getCategoryIcon = (cat: CategoriaSimplificada) => {
+  if (cat.icon && cat.icon !== 'Tag') return cat.icon
+  const semanticIcon = getSemanticIcon(cat.nome_simplificado)
+  if (semanticIcon) return semanticIcon
+  return cat.icon || 'Tag'
+}
+
+const getGroupColor = (grupo: string) => {
+  const g = grupo.toUpperCase()
+  switch (g) {
+    case 'RECEITAS':
+      return 'bg-emerald-500'
+    case 'CUSTOS DIRETOS':
+      return 'bg-red-500'
+    case 'CUSTOS FIXOS':
+      return 'bg-orange-500'
+    case 'DESPESAS OPERACIONAIS':
+      return 'bg-blue-500'
+    case 'INVESTIMENTOS':
+      return 'bg-purple-500'
+    case 'DESPESAS PESSOAIS':
+      return 'bg-pink-500'
+    case 'BENS E DIREITOS':
+      return 'bg-teal-500'
+    case 'DÍVIDAS':
+      return 'bg-rose-500'
+    default:
+      return 'bg-gray-500'
+  }
+}
+
+const getCategoryColor = (cat: CategoriaSimplificada) => {
+  if (cat.color && cat.color !== 'bg-gray-500') return cat.color
+  return getGroupColor(cat.tipo_grupo)
+}
 
 const COLORS = [
   'bg-gray-500',
@@ -134,7 +217,7 @@ export default function Categories() {
       nome_simplificado: '',
       tipo_grupo: 'DESPESAS OPERACIONAIS',
       icon: 'Tag',
-      color: 'bg-blue-500',
+      color: getGroupColor('DESPESAS OPERACIONAIS'),
     })
     setIsAddingCustomGroup(false)
     setCustomGroup('')
@@ -146,8 +229,8 @@ export default function Categories() {
     setFormData({
       nome_simplificado: category.nome_simplificado,
       tipo_grupo: category.tipo_grupo,
-      icon: category.icon || 'Tag',
-      color: category.color || 'bg-gray-500',
+      icon: getCategoryIcon(category),
+      color: getCategoryColor(category),
     })
     setIsAddingCustomGroup(false)
     setCustomGroup('')
@@ -318,10 +401,10 @@ export default function Categories() {
                         <div
                           className={cn(
                             'w-10 h-10 rounded-lg flex items-center justify-center text-white',
-                            cat.color || 'bg-gray-500',
+                            getCategoryColor(cat),
                           )}
                         >
-                          {renderIcon(cat.icon || 'Tag', 'w-5 h-5')}
+                          {renderIcon(getCategoryIcon(cat), 'w-5 h-5')}
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">
@@ -394,7 +477,11 @@ export default function Categories() {
                   <Select
                     value={formData.tipo_grupo}
                     onValueChange={(v) =>
-                      setFormData({ ...formData, tipo_grupo: v })
+                      setFormData({
+                        ...formData,
+                        tipo_grupo: v,
+                        color: getGroupColor(v),
+                      })
                     }
                   >
                     <SelectTrigger className="flex-1">
