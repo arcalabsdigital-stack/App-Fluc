@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { startOfMonth, endOfMonth } from 'date-fns'
 import { dashboardService } from '@/services/dashboardService'
-import { Transacao, TipoTransacao } from '@/lib/types'
+import { Transacao } from '@/lib/types'
 
 export function useDiagnostico(selectedDate: Date) {
   const [transactions, setTransactions] = useState<Transacao[]>([])
-  const [categories, setCategories] = useState<any[]>([])
+  const [projections, setProjections] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -14,12 +14,15 @@ export function useDiagnostico(selectedDate: Date) {
       try {
         const start = startOfMonth(selectedDate)
         const end = endOfMonth(selectedDate)
-        const [txs, cats] = await Promise.all([
+        const month = selectedDate.getMonth() + 1
+        const year = selectedDate.getFullYear()
+
+        const [txs, projs] = await Promise.all([
           dashboardService.getTransactionsForPeriod(start, end),
-          dashboardService.getCategories(),
+          dashboardService.getProjections(month, year),
         ])
         setTransactions(txs)
-        setCategories(cats)
+        setProjections(projs)
       } catch (e) {
         console.error(e)
       } finally {
@@ -29,65 +32,48 @@ export function useDiagnostico(selectedDate: Date) {
     load()
   }, [selectedDate])
 
-  const catMap = useMemo(() => {
-    const map = new Map<string, string>()
-    categories.forEach((c) => map.set(c.id, c.grupo || ''))
-    return map
-  }, [categories])
-
   const metrics = useMemo(() => {
     let planejadoReceitas = 0
     let planejadoDespesas = 0
     let realizadoReceitas = 0
     let realizadoDespesas = 0
-    let pendenteTotal = 0
+
+    projections.forEach((p) => {
+      if (p.type === 'Receita')
+        planejadoReceitas += Number(p.planned_amount) || 0
+      if (p.type === 'Despesa')
+        planejadoDespesas += Number(p.planned_amount) || 0
+    })
 
     transactions.forEach((t) => {
-      const grupo = catMap.get(t.categoria_id) || ''
-      const upperGrupo = grupo.toUpperCase()
-      const isReceita =
-        upperGrupo === 'RECEITAS' || t.tipo_id === TipoTransacao.Receita
-      const isDespesa =
-        [
-          'CUSTOS DIRETOS',
-          'CUSTOS FIXOS',
-          'DESPESAS OPERACIONAIS',
-          'DESPESAS PESSOAIS',
-          'INVESTIMENTOS',
-          'DÍVIDAS',
-          'BENS E DIREITOS',
-        ].includes(upperGrupo) || t.tipo_id === TipoTransacao.Despesa
-
-      const valor = t.valor || 0
+      const isReceita = t.tipo_id === 'Receita'
+      const isDespesa = t.tipo_id === 'Despesa'
       const pago = t.amount_paid || 0
 
-      if (t.status === 'aberto') {
-        pendenteTotal += valor
-        if (isReceita) planejadoReceitas += valor
-        if (isDespesa) planejadoDespesas += valor
-      } else if (t.status === 'pago') {
+      if (t.status === 'pago' || t.status === 'parcial') {
         if (isReceita) realizadoReceitas += pago
         if (isDespesa) realizadoDespesas += pago
-      } else if (t.status === 'parcial') {
-        if (isReceita) {
-          realizadoReceitas += pago
-          planejadoReceitas += Math.max(0, valor - pago)
-        }
-        if (isDespesa) {
-          realizadoDespesas += pago
-          planejadoDespesas += Math.max(0, valor - pago)
-        }
-        pendenteTotal += Math.max(0, valor - pago)
       }
     })
 
-    const hasProjetado = pendenteTotal > 0
-    const totalPlanejadoReceitas = planejadoReceitas + realizadoReceitas
-    const totalPlanejadoDespesas = planejadoDespesas + realizadoDespesas
+    const hasProjetado = projections.length > 0
+    const totalPlanejadoReceitas = planejadoReceitas
+    const totalPlanejadoDespesas = planejadoDespesas
 
     const planejadoNet = totalPlanejadoReceitas - totalPlanejadoDespesas
     const realizadoNet = realizadoReceitas - realizadoDespesas
-    const gap = realizadoNet - planejadoNet
+
+    let gap = 0
+    if (hasProjetado) {
+      gap = realizadoNet - planejadoNet
+      if (
+        totalPlanejadoReceitas > 0 &&
+        realizadoReceitas === 0 &&
+        realizadoDespesas === 0
+      ) {
+        gap = -planejadoNet
+      }
+    }
 
     let score = 0
     let revScore = 0
@@ -138,7 +124,7 @@ export function useDiagnostico(selectedDate: Date) {
       marginScore,
       cashScore,
     }
-  }, [transactions, catMap])
+  }, [transactions, projections])
 
   return { loading, metrics }
 }

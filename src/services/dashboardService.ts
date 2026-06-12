@@ -103,6 +103,41 @@ export const dashboardService = {
     return data
   },
 
+  async getProjections(month: number, year: number) {
+    const { data, error } = await supabase
+      .from('monthly_projections')
+      .select('*')
+      .eq('month', month)
+      .eq('year', year)
+
+    if (error) throw error
+    return data || []
+  },
+
+  async saveProjections(month: number, year: number, projections: any[]) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error('Not authenticated')
+
+    await supabase
+      .from('monthly_projections')
+      .delete()
+      .eq('month', month)
+      .eq('year', year)
+
+    if (projections.length > 0) {
+      const toInsert = projections.map((p) => ({
+        ...p,
+        user_id: user.id,
+      }))
+      const { error } = await supabase
+        .from('monthly_projections')
+        .insert(toInsert)
+      if (error) throw error
+    }
+  },
+
   async getCategories() {
     const { data, error } = await supabase
       .from('categories')

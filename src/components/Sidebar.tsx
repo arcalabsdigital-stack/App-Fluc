@@ -227,11 +227,11 @@ export function Sidebar({
               onClick={onNavigate}
             />
             <SidebarItem
-              id="sidebar-item-Ritual"
+              id="sidebar-item-Planejamento"
               icon={Sparkles}
-              label="Ritual do Mês"
-              to="/ritual-do-mes"
-              isActive={pathname === '/ritual-do-mes'}
+              label="Planejamento"
+              to="/planejamento"
+              isActive={pathname === '/planejamento'}
               onClick={onNavigate}
               badge="Novo"
             />

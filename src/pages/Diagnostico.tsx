@@ -48,7 +48,7 @@ export default function Diagnostico() {
       if (isCurrentMonth && !sessionStorage.getItem(sessionKey)) {
         sessionStorage.setItem(sessionKey, 'true')
         navigate(
-          `/ritual-do-mes?month=${selectedDate.getMonth() + 1}&year=${selectedDate.getFullYear()}`,
+          `/planejamento?month=${selectedDate.getMonth() + 1}&year=${selectedDate.getFullYear()}`,
         )
       }
     }
@@ -182,7 +182,7 @@ export default function Diagnostico() {
                   )}
                 >
                   {!metrics.hasProjetado
-                    ? 'Você não tem projeções para este período. Realize o Ritual do Mês para planejar suas finanças.'
+                    ? 'Você não tem projeções para este período. Realize o Planejamento.'
                     : metrics.score >= 80
                       ? 'Sua saúde financeira está excelente! Você tem um bom controle de suas projeções e realizações.'
                       : metrics.score >= 50
@@ -195,11 +195,11 @@ export default function Diagnostico() {
                     variant="outline"
                     onClick={() =>
                       navigate(
-                        `/ritual-do-mes?month=${selectedDate.getMonth() + 1}&year=${selectedDate.getFullYear()}`,
+                        `/planejamento?month=${selectedDate.getMonth() + 1}&year=${selectedDate.getFullYear()}`,
                       )
                     }
                   >
-                    Iniciar Ritual do Mês
+                    Iniciar Planejamento
                   </Button>
                 )}
               </div>

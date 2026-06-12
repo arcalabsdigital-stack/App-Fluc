@@ -478,6 +478,53 @@ export type Database = {
           },
         ]
       }
+      monthly_projections: {
+        Row: {
+          category_name: string
+          created_at: string
+          id: string
+          month: number
+          organization_id: string
+          planned_amount: number
+          type: string
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          category_name: string
+          created_at?: string
+          id?: string
+          month: number
+          organization_id: string
+          planned_amount?: number
+          type: string
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          category_name?: string
+          created_at?: string
+          id?: string
+          month?: number
+          organization_id?: string
+          planned_amount?: number
+          type?: string
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'monthly_projections_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string | null
@@ -1358,6 +1405,17 @@ export const Constants = {
 //   percentage: numeric (not null)
 //   created_at: timestamp with time zone (not null, default: now())
 //   updated_at: timestamp with time zone (not null, default: now())
+// Table: monthly_projections
+//   id: uuid (not null, default: gen_random_uuid())
+//   organization_id: uuid (not null)
+//   user_id: uuid (not null)
+//   month: integer (not null)
+//   year: integer (not null)
+//   category_name: text (not null)
+//   planned_amount: numeric (not null, default: 0)
+//   type: text (not null)
+//   created_at: timestamp with time zone (not null, default: now())
+//   updated_at: timestamp with time zone (not null, default: now())
 // Table: notifications
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (not null)
@@ -1539,6 +1597,12 @@ export const Constants = {
 //   FOREIGN KEY equity_shares_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   CHECK equity_shares_percentage_check: CHECK (((percentage >= (0)::numeric) AND (percentage <= (100)::numeric)))
 //   PRIMARY KEY equity_shares_pkey: PRIMARY KEY (id)
+// Table: monthly_projections
+//   CHECK monthly_projections_month_check: CHECK (((month >= 1) AND (month <= 12)))
+//   FOREIGN KEY monthly_projections_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+//   PRIMARY KEY monthly_projections_pkey: PRIMARY KEY (id)
+//   CHECK monthly_projections_type_check: CHECK ((type = ANY (ARRAY['Receita'::text, 'Despesa'::text])))
+//   FOREIGN KEY monthly_projections_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: notifications
 //   FOREIGN KEY notifications_organization_id_fkey: FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 //   PRIMARY KEY notifications_pkey: PRIMARY KEY (id)
@@ -1665,6 +1729,15 @@ export const Constants = {
 //   Policy "Users can update equity in their org" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (organization_id = get_current_user_org_id())
 //   Policy "Users can view equity in their org" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id = get_current_user_org_id())
+// Table: monthly_projections
+//   Policy "monthly_projections_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id = get_current_user_org_id())
+//   Policy "monthly_projections_insert" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (organization_id = get_current_user_org_id())
+//   Policy "monthly_projections_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (organization_id = get_current_user_org_id())
+//   Policy "monthly_projections_update" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (organization_id = get_current_user_org_id())
 // Table: notifications
 //   Policy "Users can delete their notifications" (DELETE, PERMISSIVE) roles={authenticated}
@@ -2336,6 +2409,8 @@ export const Constants = {
 //   set_audit_logs_org_id_trigger: CREATE TRIGGER set_audit_logs_org_id_trigger BEFORE INSERT ON public.audit_logs FOR EACH ROW EXECUTE FUNCTION set_org_id_on_insert()
 // Table: budgets
 //   set_budgets_org_id_trigger: CREATE TRIGGER set_budgets_org_id_trigger BEFORE INSERT ON public.budgets FOR EACH ROW EXECUTE FUNCTION set_org_id_on_insert()
+// Table: monthly_projections
+//   set_monthly_projections_org_id_trigger: CREATE TRIGGER set_monthly_projections_org_id_trigger BEFORE INSERT ON public.monthly_projections FOR EACH ROW EXECUTE FUNCTION set_org_id_on_insert()
 // Table: notifications
 //   set_notifications_org_id_trigger: CREATE TRIGGER set_notifications_org_id_trigger BEFORE INSERT ON public.notifications FOR EACH ROW EXECUTE FUNCTION set_org_id_on_insert()
 // Table: parcelated_transactions
