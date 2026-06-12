@@ -1,11 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import {
-  startOfMonth,
-  endOfMonth,
-  addMonths,
-  isSameMonth,
-  format,
-} from 'date-fns'
+import { startOfMonth, endOfMonth, addMonths, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   Dialog,
@@ -31,6 +25,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Transacao } from '@/lib/types'
 import { Loader2, ArrowRight } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
 
 interface SimulacaoModalProps {
   isOpen: boolean
@@ -52,8 +47,10 @@ export function SimulacaoModal({
   const [frequency, setFrequency] = useState<'Unico' | 'Recorrente'>('Unico')
   const [startMonthOffset, setStartMonthOffset] = useState<string>('0')
 
+  const { currentWorkspace, loading: authLoading } = useAuth()
+
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen || authLoading || !currentWorkspace) return
 
     let isMounted = true
     const loadData = async () => {
@@ -89,7 +86,7 @@ export function SimulacaoModal({
     return () => {
       isMounted = false
     }
-  }, [isOpen, selectedDate])
+  }, [isOpen, selectedDate, currentWorkspace, authLoading])
 
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value.replace(/\D/g, '')
@@ -111,9 +108,16 @@ export function SimulacaoModal({
     return [0, 1, 2].map((offset) => {
       const currentMonthDate = addMonths(selectedDate, offset)
 
-      const monthTxs = transactions.filter((t) =>
-        isSameMonth(t.data, currentMonthDate),
-      )
+      const monthTxs = transactions.filter((t) => {
+        const dateStr = t.date || (t as any).data
+        if (!dateStr) return false
+        const d = new Date(dateStr + 'T00:00:00')
+        return (
+          d.getMonth() === currentMonthDate.getMonth() &&
+          d.getFullYear() === currentMonthDate.getFullYear()
+        )
+      })
+
       const monthProjs = projections.filter(
         (p) =>
           p.month === currentMonthDate.getMonth() + 1 &&
@@ -134,26 +138,17 @@ export function SimulacaoModal({
       const realizedReceitas = monthTxs
         .filter(
           (t) =>
-            t.tipo_id === 'Receita' &&
+            (t.type === 'Receita' || (t as any).tipo_id === 'Receita') &&
             (t.status === 'pago' || t.status === 'parcial'),
         )
         .reduce((acc, t) => acc + (t.amount_paid || 0), 0)
       const realizedDespesas = monthTxs
         .filter(
           (t) =>
-            t.tipo_id === 'Despesa' &&
+            (t.type === 'Despesa' || (t as any).tipo_id === 'Despesa') &&
             (t.status === 'pago' || t.status === 'parcial'),
         )
         .reduce((acc, t) => acc + (t.amount_paid || 0), 0)
-
-      let simRealizedReceitas = realizedReceitas
-      let simRealizedDespesas = realizedDespesas
-
-      if (impact > 0) {
-        simRealizedReceitas += impact
-      } else if (impact < 0) {
-        simRealizedDespesas += Math.abs(impact)
-      }
 
       const planejadoReceitas = monthProjs
         .filter((p) => p.type === 'Receita')
@@ -161,6 +156,42 @@ export function SimulacaoModal({
       const planejadoDespesas = monthProjs
         .filter((p) => p.type === 'Despesa')
         .reduce((acc, p) => acc + p.planned_amount, 0)
+
+      const hasRealizedTxs = monthTxs.some(
+        (t) => t.status === 'pago' || t.status === 'parcial',
+      )
+
+      let baseRealizedReceitas = realizedReceitas
+      let baseRealizedDespesas = realizedDespesas
+
+      // Fallback para o plano em meses futuros sem transações realizadas
+      if (!hasRealizedTxs && offset > 0) {
+        baseRealizedReceitas = planejadoReceitas
+        baseRealizedDespesas = planejadoDespesas
+      }
+
+      let simPlanejadoReceitas = planejadoReceitas
+      let simPlanejadoDespesas = planejadoDespesas
+
+      if (impact > 0) {
+        simPlanejadoReceitas += impact
+      } else if (impact < 0) {
+        simPlanejadoDespesas += Math.abs(impact)
+      }
+
+      let simRealizedReceitas = baseRealizedReceitas
+      let simRealizedDespesas = baseRealizedDespesas
+
+      if (!hasRealizedTxs && offset > 0) {
+        simRealizedReceitas = simPlanejadoReceitas
+        simRealizedDespesas = simPlanejadoDespesas
+      } else {
+        if (impact > 0) {
+          simRealizedReceitas += impact
+        } else if (impact < 0) {
+          simRealizedDespesas += Math.abs(impact)
+        }
+      }
 
       const calcScore = (
         realRev: number,
@@ -174,7 +205,8 @@ export function SimulacaoModal({
 
         let revScore = 0
         if (planRev > 0) {
-          revScore = Math.min((realRev / planRev) * 40, 40)
+          const revRatio = realRev / planRev
+          revScore = Math.min(revRatio * 40, 40)
         } else if (realRev > 0) {
           revScore = 40
         }
@@ -194,16 +226,16 @@ export function SimulacaoModal({
       }
 
       const current = calcScore(
-        realizedReceitas,
-        realizedDespesas,
+        baseRealizedReceitas,
+        baseRealizedDespesas,
         planejadoReceitas,
         planejadoDespesas,
       )
       const simulated = calcScore(
         simRealizedReceitas,
         simRealizedDespesas,
-        planejadoReceitas,
-        planejadoDespesas,
+        simPlanejadoReceitas,
+        simPlanejadoDespesas,
       )
 
       return {

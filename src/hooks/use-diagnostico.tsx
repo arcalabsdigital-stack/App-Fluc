@@ -47,7 +47,7 @@ export const useDiagnostico = (selectedDate: Date) => {
         const realizedReceitas = transactions
           .filter(
             (t) =>
-              t.tipo_id === 'Receita' &&
+              (t.type === 'Receita' || (t as any).tipo_id === 'Receita') &&
               (t.status === 'pago' || t.status === 'parcial'),
           )
           .reduce((acc, t) => acc + (t.amount_paid || 0), 0)
@@ -55,7 +55,7 @@ export const useDiagnostico = (selectedDate: Date) => {
         const realizedDespesas = transactions
           .filter(
             (t) =>
-              t.tipo_id === 'Despesa' &&
+              (t.type === 'Despesa' || (t as any).tipo_id === 'Despesa') &&
               (t.status === 'pago' || t.status === 'parcial'),
           )
           .reduce((acc, t) => acc + (t.amount_paid || 0), 0)
