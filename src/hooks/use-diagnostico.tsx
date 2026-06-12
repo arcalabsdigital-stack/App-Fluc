@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { startOfMonth, endOfMonth } from 'date-fns'
 import { dashboardService } from '@/services/dashboardService'
 import { projectionsService } from '@/services/projectionsService'
+import { planningService } from '@/services/planningService'
 import { useAuth } from './use-auth'
 
 export const useDiagnostico = (selectedDate: Date) => {
@@ -36,12 +37,13 @@ export const useDiagnostico = (selectedDate: Date) => {
         const month = selectedDate.getMonth() + 1
         const year = selectedDate.getFullYear()
 
-        const [transactions, projections] = await Promise.all([
+        const [transactions, projections, summary] = await Promise.all([
           dashboardService.getTransactionsForPeriod(
             startOfMonth(selectedDate),
             endOfMonth(selectedDate),
           ),
           projectionsService.getProjections(month, year),
+          planningService.getPlanning(month, year),
         ])
 
         const realizedReceitas = transactions
@@ -60,15 +62,25 @@ export const useDiagnostico = (selectedDate: Date) => {
           )
           .reduce((acc, t) => acc + (t.amount_paid || 0), 0)
 
-        const planejadoReceitas = projections
-          .filter((p) => p.type === 'Receita')
-          .reduce((acc, p) => acc + p.planned_amount, 0)
+        const planejadoReceitas =
+          projections.length > 0
+            ? projections
+                .filter((p) => p.type === 'Receita')
+                .reduce((acc, p) => acc + p.planned_amount, 0)
+            : summary
+              ? summary.total_revenue
+              : 0
 
-        const planejadoDespesas = projections
-          .filter((p) => p.type === 'Despesa')
-          .reduce((acc, p) => acc + p.planned_amount, 0)
+        const planejadoDespesas =
+          projections.length > 0
+            ? projections
+                .filter((p) => p.type === 'Despesa')
+                .reduce((acc, p) => acc + p.planned_amount, 0)
+            : summary
+              ? summary.total_expenses
+              : 0
 
-        const hasProjetado = projections.length > 0
+        const hasProjetado = projections.length > 0 || !!summary
 
         const realizadoNet = realizedReceitas - realizedDespesas
         const planejadoNet = planejadoReceitas - planejadoDespesas

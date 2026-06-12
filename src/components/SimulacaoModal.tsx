@@ -22,6 +22,7 @@ import {
   projectionsService,
   MonthlyProjection,
 } from '@/services/projectionsService'
+import { planningService, PlanningSummary } from '@/services/planningService'
 import { cn } from '@/lib/utils'
 import { Transacao } from '@/lib/types'
 import { Loader2, ArrowRight } from 'lucide-react'
@@ -41,6 +42,7 @@ export function SimulacaoModal({
   const [loading, setLoading] = useState(false)
   const [transactions, setTransactions] = useState<Transacao[]>([])
   const [projections, setProjections] = useState<MonthlyProjection[]>([])
+  const [summaries, setSummaries] = useState<PlanningSummary[]>([])
 
   const [type, setType] = useState<'Receita' | 'Despesa'>('Despesa')
   const [value, setValue] = useState<string>('')
@@ -69,11 +71,20 @@ export function SimulacaoModal({
           )
         })
 
+        const sumPromises = [0, 1, 2].map((offset) => {
+          const d = addMonths(selectedDate, offset)
+          return planningService.getPlanning(d.getMonth() + 1, d.getFullYear())
+        })
+
         const projs = (await Promise.all(projPromises)).flat()
+        const sums = (await Promise.all(sumPromises)).filter(
+          Boolean,
+        ) as PlanningSummary[]
 
         if (isMounted) {
           setTransactions(txs)
           setProjections(projs)
+          setSummaries(sums)
         }
       } catch (err) {
         console.error(err)
@@ -118,10 +129,15 @@ export function SimulacaoModal({
         )
       })
 
+      const monthNum = currentMonthDate.getMonth() + 1
+      const yearNum = currentMonthDate.getFullYear()
+
       const monthProjs = projections.filter(
-        (p) =>
-          p.month === currentMonthDate.getMonth() + 1 &&
-          p.year === currentMonthDate.getFullYear(),
+        (p) => p.month === monthNum && p.year === yearNum,
+      )
+
+      const monthSummary = summaries.find(
+        (s) => s.month === monthNum && s.year === yearNum,
       )
 
       const numericValue =
@@ -150,12 +166,23 @@ export function SimulacaoModal({
         )
         .reduce((acc, t) => acc + (t.amount_paid || 0), 0)
 
-      const planejadoReceitas = monthProjs
-        .filter((p) => p.type === 'Receita')
-        .reduce((acc, p) => acc + p.planned_amount, 0)
-      const planejadoDespesas = monthProjs
-        .filter((p) => p.type === 'Despesa')
-        .reduce((acc, p) => acc + p.planned_amount, 0)
+      const planejadoReceitas =
+        monthProjs.length > 0
+          ? monthProjs
+              .filter((p) => p.type === 'Receita')
+              .reduce((acc, p) => acc + p.planned_amount, 0)
+          : monthSummary
+            ? monthSummary.total_revenue
+            : 0
+
+      const planejadoDespesas =
+        monthProjs.length > 0
+          ? monthProjs
+              .filter((p) => p.type === 'Despesa')
+              .reduce((acc, p) => acc + p.planned_amount, 0)
+          : monthSummary
+            ? monthSummary.total_expenses
+            : 0
 
       const hasRealizedTxs = monthTxs.some(
         (t) => t.status === 'pago' || t.status === 'parcial',
@@ -248,6 +275,7 @@ export function SimulacaoModal({
   }, [
     transactions,
     projections,
+    summaries,
     selectedDate,
     type,
     value,

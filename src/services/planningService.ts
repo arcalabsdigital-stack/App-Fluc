@@ -22,18 +22,78 @@ export const planningService = {
       .maybeSingle()
 
     if (error) throw error
-    return data as PlanningSummary | null
+
+    if (data) {
+      return data as PlanningSummary
+    }
+
+    // Fallback to monthly_projections
+    const { data: projData, error: projError } = await supabase
+      .from('monthly_projections' as any)
+      .select('planned_amount, type')
+      .eq('month', month)
+      .eq('year', year)
+
+    if (projError) throw projError
+
+    if (projData && projData.length > 0) {
+      const total_revenue = projData
+        .filter((p: any) => p.type === 'Receita')
+        .reduce((sum: number, p: any) => sum + Number(p.planned_amount), 0)
+      const total_expenses = projData
+        .filter((p: any) => p.type === 'Despesa')
+        .reduce((sum: number, p: any) => sum + Number(p.planned_amount), 0)
+
+      return {
+        month,
+        year,
+        total_revenue,
+        total_expenses,
+        expenses_breakdown: {},
+      } as PlanningSummary
+    }
+
+    return null
   },
 
   async getAllPlannings() {
-    const { data, error } = await supabase
+    const { data: summariesData, error: sumError } = await supabase
       .from('planning_summaries' as any)
       .select('month, year')
-      .order('year', { ascending: true })
-      .order('month', { ascending: true })
 
-    if (error) throw error
-    return data as { month: number; year: number }[]
+    if (sumError) throw sumError
+
+    const { data: projectionsData, error: projError } = await supabase
+      .from('monthly_projections' as any)
+      .select('month, year')
+
+    if (projError) throw projError
+
+    const uniqueSet = new Set<string>()
+    const result: { month: number; year: number }[] = []
+
+    const add = (m: number, y: number) => {
+      const key = `${m}-${y}`
+      if (!uniqueSet.has(key)) {
+        uniqueSet.add(key)
+        result.push({ month: m, year: y })
+      }
+    }
+
+    if (summariesData) {
+      summariesData.forEach((d) => add(d.month, d.year))
+    }
+
+    if (projectionsData) {
+      projectionsData.forEach((d) => add(d.month, d.year))
+    }
+
+    result.sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year
+      return a.month - b.month
+    })
+
+    return result
   },
 
   async savePlanning(planning: PlanningSummary) {
