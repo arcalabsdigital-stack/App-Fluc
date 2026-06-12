@@ -15,6 +15,7 @@ import Users from './pages/Users'
 import History from './pages/History'
 import Search from './pages/Search'
 import Checkout from './pages/Checkout'
+import Diagnostico from './pages/Diagnostico'
 import Valuation from './pages/Valuation'
 import Budgets from './pages/Budgets'
 import Recurring from './pages/Recurring'
@@ -42,6 +43,7 @@ const App = () => (
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
                 <Route path="/" element={<Index />} />
+                <Route path="/diagnostico" element={<Diagnostico />} />
                 <Route path="/accounts" element={<Accounts />} />
                 <Route path="/payments" element={<Payments />} />
                 <Route path="/settings" element={<Settings />} />

@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   RepeatIcon,
   Folder,
+  Activity,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -214,6 +215,14 @@ export function Sidebar({
               label="Início"
               to="/"
               isActive={pathname === '/'}
+              onClick={onNavigate}
+            />
+            <SidebarItem
+              id="sidebar-item-Diagnostico"
+              icon={Activity}
+              label="Meu Diagnóstico"
+              to="/diagnostico"
+              isActive={pathname === '/diagnostico'}
               onClick={onNavigate}
             />
             <SidebarItem
