@@ -1,6 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
-import { supabase } from '@/lib/supabase/client'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState } from 'react'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -8,337 +13,399 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Activity, AlertTriangle, TrendingUp, CheckCircle2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  CheckCircle,
+  Info,
+  Activity,
+  TrendingUp,
+  TrendingDown,
+  Target,
+} from 'lucide-react'
+import { format, subMonths, addMonths } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
-
-const MONTHS = [
-  'Janeiro',
-  'Fevereiro',
-  'Março',
-  'Abril',
-  'Maio',
-  'Junho',
-  'Julho',
-  'Agosto',
-  'Setembro',
-  'Outubro',
-  'Novembro',
-  'Dezembro',
-]
+import { Skeleton } from '@/components/ui/skeleton'
+import { Progress } from '@/components/ui/progress'
+import { useDiagnostico } from '@/hooks/use-diagnostico'
 
 export default function Diagnostico() {
-  const currentYear = new Date().getFullYear()
-  const YEARS = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
+  const [selectedDate, setSelectedDate] = useState(new Date())
+  const { loading, metrics } = useDiagnostico(selectedDate)
 
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth())
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [transactions, setTransactions] = useState<any[]>([])
-  const [categorias, setCategorias] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    async function fetchData() {
-      setIsLoading(true)
-      try {
-        const startOfMonth = new Date(selectedYear, selectedMonth, 1)
-        const endOfMonth = new Date(
-          selectedYear,
-          selectedMonth + 1,
-          0,
-          23,
-          59,
-          59,
-        )
-
-        const [txRes, catRes] = await Promise.all([
-          supabase
-            .from('transactions')
-            .select('*')
-            .gte('date', startOfMonth.toISOString().split('T')[0])
-            .lte('date', endOfMonth.toISOString().split('T')[0]),
-          supabase.from('categoria_simplificada').select('*'),
-        ])
-
-        if (txRes.data) setTransactions(txRes.data)
-        if (catRes.data) setCategorias(catRes.data)
-      } catch (error) {
-        console.error('Error fetching data:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [selectedMonth, selectedYear])
-
-  const { planejado, realizado, gapAbs, gapPct, totalScore, actionMsg } =
-    useMemo(() => {
-      const isRevenue = (t: any) => {
-        const cat = categorias.find((c) => c.nome_simplificado === t.category)
-        if (cat) return cat.tipo_grupo === 'RECEITAS'
-        return t.type === 'Receita'
-      }
-
-      const isExpense = (t: any) => {
-        const cat = categorias.find((c) => c.nome_simplificado === t.category)
-        if (cat) {
-          return [
-            'CUSTOS DIRETOS',
-            'CUSTOS FIXOS',
-            'DESPESAS OPERACIONAIS',
-            'DESPESAS PESSOAIS',
-            'INVESTIMENTOS',
-            'DÍVIDAS',
-            'BENS E DIREITOS',
-          ].includes(cat.tipo_grupo)
-        }
-        return t.type === 'Despesa'
-      }
-
-      const openTx = transactions.filter((t) => t.status !== 'pago')
-      const paidTx = transactions.filter((t) => t.status === 'pago')
-
-      const openRev = openTx
-        .filter(isRevenue)
-        .reduce((acc, t) => acc + Number(t.amount), 0)
-      const openExp = openTx
-        .filter(isExpense)
-        .reduce((acc, t) => acc + Number(t.amount), 0)
-
-      const paidRev = paidTx
-        .filter(isRevenue)
-        .reduce((acc, t) => acc + Number(t.amount_paid || t.amount), 0)
-      const paidExp = paidTx
-        .filter(isExpense)
-        .reduce((acc, t) => acc + Number(t.amount_paid || t.amount), 0)
-
-      const _planejado = openRev - openExp
-      const _realizado = paidRev - paidExp
-
-      const _gapAbs = _realizado - _planejado
-      const _gapPct =
-        _planejado !== 0 ? (_gapAbs / Math.abs(_planejado)) * 100 : 0
-
-      // PAC Score
-      // 1. Revenue vs. Projection (40%)
-      const totalPlannedRev = paidRev + openRev
-      const revRatio =
-        totalPlannedRev > 0 ? paidRev / totalPlannedRev : paidRev > 0 ? 1 : 0
-      const _revScore = Math.min(revRatio, 1) * 40
-
-      // 2. Profit Margin (35%)
-      const marginRatio = paidExp > 0 ? paidRev / paidExp : paidRev > 0 ? 1 : 0
-      const _marginScore = Math.min(marginRatio, 1) * 35
-
-      // 3. Cash Capacity (25%)
-      const netCash = paidRev - paidExp
-      const cashRatio = openExp > 0 ? (netCash > 0 ? netCash / openExp : 0) : 1
-      const _cashScore = Math.min(cashRatio, 1) * 25
-
-      const _totalScore = Math.round(_revScore + _marginScore + _cashScore)
-
-      // Contextual action
-      let _actionMsg = null
-      if (_totalScore < 70) {
-        const perfs = [
-          { type: 'rev', perf: _revScore / 40 },
-          { type: 'margin', perf: _marginScore / 35 },
-          { type: 'cash', perf: _cashScore / 25 },
-        ]
-        perfs.sort((a, b) => a.perf - b.perf)
-        const worst = perfs[0].type
-
-        if (worst === 'rev') {
-          const missingPct = Math.round((1 - revRatio) * 100)
-          _actionMsg = `Sua receita real está ${missingPct}% abaixo do projetado. Considere acelerar cobranças ou revisar sua projeção de vendas.`
-        } else if (worst === 'margin') {
-          _actionMsg =
-            'Sua margem de lucro está abaixo do ideal. Avalie seus custos diretos ou precificação.'
-        } else {
-          _actionMsg =
-            'Seu caixa não cobre as despesas pendentes. Negocie prazos ou priorize pagamentos.'
-        }
-      }
-
-      return {
-        planejado: _planejado,
-        realizado: _realizado,
-        gapAbs: _gapAbs,
-        gapPct: _gapPct,
-        totalScore: _totalScore,
-        actionMsg: _actionMsg,
-      }
-    }, [transactions, categorias])
-
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('pt-BR', {
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-    }).format(value)
+    }).format(val)
+  }
+
+  const isGapNegative = metrics.realizadoNet < metrics.planejadoNet
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-            Meu Diagnóstico
-          </h2>
-          <p className="text-muted-foreground">
-            Inteligência Financeira Baseada no Método PAC
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Select
-            value={selectedMonth.toString()}
-            onValueChange={(v) => setSelectedMonth(Number(v))}
+    <div className="flex flex-col gap-4 sm:gap-6 animate-fade-in pb-10">
+      <div className="sticky top-0 z-30 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-4 pt-2 -mx-4 px-4 sm:-mx-6 sm:px-6 mb-2 border-b border-border/50 gap-4">
+        <h2 className="text-xl font-semibold hidden sm:block">
+          Meu Diagnóstico
+        </h2>
+
+        <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-between sm:justify-start">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setSelectedDate(subMonths(selectedDate, 1))}
           >
-            <SelectTrigger className="w-[140px] bg-white">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {MONTHS.map((m, i) => (
-                <SelectItem key={i} value={i.toString()}>
-                  {m}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={selectedYear.toString()}
-            onValueChange={(v) => setSelectedYear(Number(v))}
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center gap-2">
+            <Select
+              value={selectedDate.getMonth().toString()}
+              onValueChange={(val) => {
+                const newDate = new Date(selectedDate)
+                newDate.setMonth(parseInt(val))
+                setSelectedDate(newDate)
+              }}
+            >
+              <SelectTrigger className="w-[120px] font-medium capitalize">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <SelectItem
+                    key={i}
+                    value={i.toString()}
+                    className="capitalize"
+                  >
+                    {format(new Date(2024, i, 1), 'MMMM', { locale: ptBR })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={selectedDate.getFullYear().toString()}
+              onValueChange={(val) => {
+                const newDate = new Date(selectedDate)
+                newDate.setFullYear(parseInt(val))
+                setSelectedDate(newDate)
+              }}
+            >
+              <SelectTrigger className="w-[90px] font-medium">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 10 }).map((_, i) => {
+                  const year = new Date().getFullYear() - 5 + i
+                  return (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setSelectedDate(addMonths(selectedDate, 1))}
           >
-            <SelectTrigger className="w-[100px] bg-white">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {YEARS.map((y) => (
-                <SelectItem key={y} value={y.toString()}>
-                  {y}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="h-64 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      {loading ? (
+        <div className="space-y-6">
+          <Skeleton className="h-[100px] w-full rounded-2xl" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-[140px] rounded-2xl" />
+            ))}
+          </div>
         </div>
       ) : (
-        <>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="bg-white shadow-sm border-gray-100">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500">
-                  Planejado (Aberto)
-                </CardTitle>
-                <Activity className="h-4 w-4 text-gray-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(planejado)}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white shadow-sm border-gray-100">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500">
-                  Realizado (Pago)
-                </CardTitle>
-                <CheckCircle2 className="h-4 w-4 text-gray-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(realizado)}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white shadow-sm border-gray-100">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500">
-                  Controle (GAP)
-                </CardTitle>
-                {realizado < planejado ? (
-                  <AlertTriangle className="h-4 w-4 text-red-500" />
-                ) : (
-                  <TrendingUp className="h-4 w-4 text-emerald-500" />
-                )}
-              </CardHeader>
-              <CardContent>
-                <div
+        <div className="grid grid-cols-1 gap-6">
+          <Card
+            className={cn(
+              'border',
+              !metrics.hasProjetado
+                ? 'border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20'
+                : 'border-primary/20 bg-primary/5',
+            )}
+          >
+            <CardContent className="p-4 sm:p-6 flex items-start gap-4">
+              {!metrics.hasProjetado ? (
+                <AlertTriangle className="w-6 h-6 text-red-500 shrink-0 mt-0.5" />
+              ) : (
+                <Info className="w-6 h-6 text-primary shrink-0 mt-0.5" />
+              )}
+              <div>
+                <h3
                   className={cn(
-                    'text-2xl font-bold',
-                    realizado < planejado ? 'text-red-600' : 'text-emerald-600',
+                    'font-semibold mb-1',
+                    !metrics.hasProjetado
+                      ? 'text-red-900 dark:text-red-200'
+                      : 'text-foreground',
                   )}
                 >
-                  {formatCurrency(gapAbs)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {gapPct > 0 ? '+' : ''}
-                  {gapPct.toFixed(1)}% em relação ao planejado
+                  {!metrics.hasProjetado
+                    ? 'Atenção necessária'
+                    : 'Diagnóstico Atual'}
+                </h3>
+                <p
+                  className={cn(
+                    'text-sm',
+                    !metrics.hasProjetado
+                      ? 'text-red-700 dark:text-red-300'
+                      : 'text-muted-foreground',
+                  )}
+                >
+                  {!metrics.hasProjetado
+                    ? 'Você não tem projeções para este período. Cadastre contas a pagar/receber com status Pendente para ter um diagnóstico real.'
+                    : metrics.score >= 80
+                      ? 'Sua saúde financeira está excelente! Você tem um bom controle de suas projeções e realizações.'
+                      : metrics.score >= 50
+                        ? 'Sua saúde financeira está razoável, mas há espaço para melhorias entre o que foi planejado e realizado.'
+                        : 'Sua saúde financeira precisa de atenção. Revise suas projeções e tente alinhar seus gastos com o planejado.'}
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <Card className="rounded-2xl border-none shadow-sm">
+              <CardContent className="p-6 flex flex-col h-full justify-between">
+                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-4">
+                  <Activity className="w-4 h-4" /> Score de Saúde Financeira
+                </h3>
+                <div className="flex flex-col">
+                  <span
+                    className={cn(
+                      'text-4xl font-bold mb-1',
+                      !metrics.hasProjetado
+                        ? 'text-red-500'
+                        : metrics.score >= 80
+                          ? 'text-green-500'
+                          : metrics.score >= 50
+                            ? 'text-yellow-500'
+                            : 'text-red-500',
+                    )}
+                  >
+                    {metrics.score}{' '}
+                    <span className="text-xl text-muted-foreground font-normal">
+                      /100
+                    </span>
+                  </span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {!metrics.hasProjetado
+                      ? 'Sem projeção'
+                      : metrics.score >= 80
+                        ? 'Excelente'
+                        : metrics.score >= 50
+                          ? 'Atenção'
+                          : 'Crítico'}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border-none shadow-sm">
+              <CardContent className="p-6 flex flex-col h-full justify-between">
+                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-4">
+                  <Target className="w-4 h-4" /> Controle (GAP)
+                </h3>
+                <div className="flex flex-col">
+                  {!metrics.hasProjetado ? (
+                    <>
+                      <span className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1 leading-tight">
+                        Sem projeção para este período
+                      </span>
+                      <span className="text-xs font-medium text-muted-foreground leading-tight mt-1">
+                        Cadastre contas a pagar/receber para comparar
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span
+                        className={cn(
+                          'text-2xl sm:text-3xl font-bold mb-1 flex items-center gap-2',
+                          isGapNegative ? 'text-red-500' : 'text-green-500',
+                        )}
+                      >
+                        {isGapNegative && (
+                          <AlertTriangle className="w-5 h-5 shrink-0" />
+                        )}
+                        {!isGapNegative && (
+                          <CheckCircle className="w-5 h-5 shrink-0" />
+                        )}
+                        <span
+                          className="truncate"
+                          title={formatCurrency(metrics.gap)}
+                        >
+                          {formatCurrency(metrics.gap)}
+                        </span>
+                      </span>
+                      <span className="text-sm font-medium text-muted-foreground mt-1">
+                        Realizado vs Planejado
+                      </span>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border-none shadow-sm">
+              <CardContent className="p-6 flex flex-col h-full justify-between">
+                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-4">
+                  <TrendingUp className="w-4 h-4 text-green-500" /> Receitas
+                </h3>
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-end">
+                    <div className="min-w-0 flex-1 pr-2">
+                      <p className="text-xs text-muted-foreground">Realizado</p>
+                      <p
+                        className="text-base font-bold text-green-600 truncate"
+                        title={formatCurrency(metrics.realizadoReceitas)}
+                      >
+                        {formatCurrency(metrics.realizadoReceitas)}
+                      </p>
+                    </div>
+                    <div className="text-right min-w-0 flex-1 pl-2">
+                      <p className="text-xs text-muted-foreground">Planejado</p>
+                      <p
+                        className="text-base font-bold truncate"
+                        title={formatCurrency(metrics.totalPlanejadoReceitas)}
+                      >
+                        {formatCurrency(metrics.totalPlanejadoReceitas)}
+                      </p>
+                    </div>
+                  </div>
+                  <Progress
+                    value={
+                      metrics.totalPlanejadoReceitas > 0
+                        ? (metrics.realizadoReceitas /
+                            metrics.totalPlanejadoReceitas) *
+                          100
+                        : 0
+                    }
+                    className="h-2 bg-secondary [&>div]:bg-green-500"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border-none shadow-sm">
+              <CardContent className="p-6 flex flex-col h-full justify-between">
+                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-4">
+                  <TrendingDown className="w-4 h-4 text-red-500" /> Despesas
+                </h3>
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-end">
+                    <div className="min-w-0 flex-1 pr-2">
+                      <p className="text-xs text-muted-foreground">Realizado</p>
+                      <p
+                        className="text-base font-bold text-red-600 truncate"
+                        title={formatCurrency(metrics.realizadoDespesas)}
+                      >
+                        {formatCurrency(metrics.realizadoDespesas)}
+                      </p>
+                    </div>
+                    <div className="text-right min-w-0 flex-1 pl-2">
+                      <p className="text-xs text-muted-foreground">Planejado</p>
+                      <p
+                        className="text-base font-bold truncate"
+                        title={formatCurrency(metrics.totalPlanejadoDespesas)}
+                      >
+                        {formatCurrency(metrics.totalPlanejadoDespesas)}
+                      </p>
+                    </div>
+                  </div>
+                  <Progress
+                    value={
+                      metrics.totalPlanejadoDespesas > 0
+                        ? (metrics.realizadoDespesas /
+                            metrics.totalPlanejadoDespesas) *
+                          100
+                        : 0
+                    }
+                    className="h-2 bg-secondary [&>div]:bg-red-500"
+                  />
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          <Card className="flex flex-col items-center justify-center p-10 text-center bg-white border-gray-100 shadow-sm relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-white opacity-50 z-0" />
-            <div className="z-10 relative">
-              <h3 className="text-xl font-semibold mb-2 text-gray-700">
-                Score de Saúde Financeira
-              </h3>
-              <div
-                className={cn(
-                  'text-7xl font-black mb-4 tracking-tighter',
-                  totalScore >= 70
-                    ? 'text-emerald-500'
-                    : totalScore >= 40
-                      ? 'text-yellow-500'
-                      : 'text-red-500',
-                )}
-              >
-                {totalScore}
-              </div>
-              <p
-                className={cn(
-                  'text-lg font-medium px-4 py-1 rounded-full',
-                  totalScore >= 70
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : totalScore >= 40
-                      ? 'bg-yellow-50 text-yellow-700'
-                      : 'bg-red-50 text-red-700',
-                )}
-              >
-                {totalScore >= 70
-                  ? 'Saúde financeira estável'
-                  : totalScore >= 40
-                    ? 'Atenção necessária'
-                    : 'Risco identificado'}
-              </p>
-            </div>
-          </Card>
-
-          {actionMsg && (
-            <Card className="bg-orange-50 border-orange-200 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <CardContent className="flex items-start p-5 space-x-4">
-                <div className="bg-white p-2 rounded-full shadow-sm">
-                  <AlertTriangle className="h-6 w-6 text-orange-500" />
+          {metrics.hasProjetado && (
+            <Card className="rounded-2xl border-none shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg">Composição do Score</CardTitle>
+                <CardDescription>
+                  Entenda como seu score de {metrics.score} foi calculado com
+                  base em 3 pilares fundamentais.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">
+                      Receita vs Projeção
+                    </span>
+                    <span className="text-sm font-bold">
+                      {Math.round(metrics.revScore)} / 40
+                    </span>
+                  </div>
+                  <Progress
+                    value={(metrics.revScore / 40) * 100}
+                    className="h-2 [&>div]:bg-primary"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Sua capacidade de atingir as receitas planejadas para o
+                    período.
+                  </p>
                 </div>
-                <div className="flex-1">
-                  <h4 className="font-bold text-orange-900 text-lg">
-                    Sugestão de Ação
-                  </h4>
-                  <p className="text-orange-800 mt-1 leading-relaxed">
-                    {actionMsg}
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Margem de Lucro</span>
+                    <span className="text-sm font-bold">
+                      {Math.round(metrics.marginScore)} / 35
+                    </span>
+                  </div>
+                  <Progress
+                    value={(metrics.marginScore / 35) * 100}
+                    className="h-2 [&>div]:bg-primary"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Avalia se o seu resultado líquido representa uma margem
+                    saudável ({'>'}20%).
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">
+                      Capacidade de Caixa
+                    </span>
+                    <span className="text-sm font-bold">
+                      {Math.round(metrics.cashScore)} / 25
+                    </span>
+                  </div>
+                  <Progress
+                    value={(metrics.cashScore / 25) * 100}
+                    className="h-2 [&>div]:bg-primary"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Verifica se a operação gerou caixa positivo no período
+                    selecionado.
                   </p>
                 </div>
               </CardContent>
             </Card>
           )}
-        </>
+        </div>
       )}
     </div>
   )

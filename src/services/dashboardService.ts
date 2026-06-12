@@ -104,7 +104,9 @@ export const dashboardService = {
   },
 
   async getCategories() {
-    const { data, error } = await supabase.from('categories').select('id, nome')
+    const { data, error } = await supabase
+      .from('categories')
+      .select('id, nome, grupo, tipo')
     if (error) {
       console.error('Error fetching categories:', error)
       return []
