@@ -219,14 +219,6 @@ export function Sidebar({
               onClick={onNavigate}
             />
             <SidebarItem
-              id="sidebar-item-Diagnostico"
-              icon={Activity}
-              label="Meu Diagnóstico"
-              to="/diagnostico"
-              isActive={pathname === '/diagnostico'}
-              onClick={onNavigate}
-            />
-            <SidebarItem
               id="sidebar-item-Planejamento"
               icon={Sparkles}
               label="Planejamento"
@@ -234,6 +226,14 @@ export function Sidebar({
               isActive={pathname === '/planejamento'}
               onClick={onNavigate}
               badge="Novo"
+            />
+            <SidebarItem
+              id="sidebar-item-Diagnostico"
+              icon={Activity}
+              label="Meu Diagnóstico"
+              to="/diagnostico"
+              isActive={pathname === '/diagnostico'}
+              onClick={onNavigate}
             />
             <SidebarItem
               id="sidebar-item-Contas"

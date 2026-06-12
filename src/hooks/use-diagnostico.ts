@@ -1,11 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import { startOfMonth, endOfMonth } from 'date-fns'
 import { dashboardService } from '@/services/dashboardService'
+import { planningService, PlanningSummary } from '@/services/planningService'
 import { Transacao } from '@/lib/types'
 
 export function useDiagnostico(selectedDate: Date) {
   const [transactions, setTransactions] = useState<Transacao[]>([])
-  const [projections, setProjections] = useState<any[]>([])
+  const [planningSummary, setPlanningSummary] =
+    useState<PlanningSummary | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -17,12 +19,12 @@ export function useDiagnostico(selectedDate: Date) {
         const month = selectedDate.getMonth() + 1
         const year = selectedDate.getFullYear()
 
-        const [txs, projs] = await Promise.all([
+        const [txs, summary] = await Promise.all([
           dashboardService.getTransactionsForPeriod(start, end),
-          dashboardService.getProjections(month, year),
+          planningService.getPlanning(month, year),
         ])
         setTransactions(txs)
-        setProjections(projs)
+        setPlanningSummary(summary)
       } catch (e) {
         console.error(e)
       } finally {
@@ -33,21 +35,15 @@ export function useDiagnostico(selectedDate: Date) {
   }, [selectedDate])
 
   const metrics = useMemo(() => {
-    let planejadoReceitas = 0
-    let planejadoDespesas = 0
+    let planejadoReceitas = planningSummary?.total_revenue || 0
+    let planejadoDespesas = planningSummary?.total_expenses || 0
     let realizadoReceitas = 0
     let realizadoDespesas = 0
 
-    projections.forEach((p) => {
-      if (p.type === 'Receita')
-        planejadoReceitas += Number(p.planned_amount) || 0
-      if (p.type === 'Despesa')
-        planejadoDespesas += Number(p.planned_amount) || 0
-    })
-
     transactions.forEach((t) => {
-      const isReceita = t.tipo_id === 'Receita'
-      const isDespesa = t.tipo_id === 'Despesa'
+      // Cast to any to handle type safely without ts errors based on existing structure
+      const isReceita = (t as any).tipo_id === 'Receita' || t.type === 'Receita'
+      const isDespesa = (t as any).tipo_id === 'Despesa' || t.type === 'Despesa'
       const pago = t.amount_paid || 0
 
       if (t.status === 'pago' || t.status === 'parcial') {
@@ -56,7 +52,7 @@ export function useDiagnostico(selectedDate: Date) {
       }
     })
 
-    const hasProjetado = projections.length > 0
+    const hasProjetado = !!planningSummary
     const totalPlanejadoReceitas = planejadoReceitas
     const totalPlanejadoDespesas = planejadoDespesas
 
@@ -124,7 +120,7 @@ export function useDiagnostico(selectedDate: Date) {
       marginScore,
       cashScore,
     }
-  }, [transactions, projections])
+  }, [transactions, planningSummary])
 
   return { loading, metrics }
 }

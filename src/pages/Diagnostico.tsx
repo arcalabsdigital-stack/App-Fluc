@@ -44,7 +44,7 @@ export default function Diagnostico() {
       const isCurrentMonth =
         selectedDate.getMonth() === new Date().getMonth() &&
         selectedDate.getFullYear() === new Date().getFullYear()
-      const sessionKey = `hasSeenRitualPrompt_${selectedDate.getMonth()}_${selectedDate.getFullYear()}`
+      const sessionKey = `hasSeenPlanejamentoPrompt_${selectedDate.getMonth()}_${selectedDate.getFullYear()}`
       if (isCurrentMonth && !sessionStorage.getItem(sessionKey)) {
         sessionStorage.setItem(sessionKey, 'true')
         navigate(
