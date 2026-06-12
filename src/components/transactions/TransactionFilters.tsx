@@ -41,7 +41,7 @@ export function TransactionFilters({
   filters,
   setFilters,
 }: TransactionFiltersProps) {
-  const { categories } = useTransactionStore()
+  const { categories, categoriasSimplificadas } = useTransactionStore()
 
   const clearFilters = () => {
     setFilters({
@@ -156,6 +156,11 @@ export function TransactionFilters({
             {categories.map((cat) => (
               <SelectItem key={cat.id} value={cat.id}>
                 {cat.nome}
+              </SelectItem>
+            ))}
+            {categoriasSimplificadas.map((cat) => (
+              <SelectItem key={`sim-${cat.id}`} value={cat.nome_simplificado}>
+                {cat.nome_simplificado}
               </SelectItem>
             ))}
           </SelectContent>

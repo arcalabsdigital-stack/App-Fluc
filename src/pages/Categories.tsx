@@ -46,6 +46,8 @@ const ICON_NAMES = [
   'Plane',
   'Smartphone',
   'Music',
+  'User',
+  'Receipt',
 ]
 
 const COLORS = [
@@ -64,14 +66,25 @@ const COLORS = [
   'bg-rose-500',
 ]
 
-const DEFAULT_GROUPS = [
-  'Receitas',
-  'Custos Diretos',
-  'Custos Fixos',
-  'Despesas Operacionais',
-  'Investimentos',
-  'Despesas Pessoais',
+const STANDARD_GROUPS = [
+  'RECEITAS',
+  'CUSTOS DIRETOS',
+  'CUSTOS FIXOS',
+  'DESPESAS OPERACIONAIS',
+  'INVESTIMENTOS',
+  'DESPESAS PESSOAIS',
+  'BENS E DIREITOS',
+  'DÍVIDAS',
 ]
+
+function normalizeString(str: string) {
+  return str
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\s\-_]/g, '')
+}
 
 export default function Categories() {
   const [categories, setCategories] = useState<CategoriaSimplificada[]>([])
@@ -86,7 +99,7 @@ export default function Categories() {
     useState<CategoriaSimplificada | null>(null)
   const [formData, setFormData] = useState({
     nome_simplificado: '',
-    tipo_grupo: 'Despesas Operacionais',
+    tipo_grupo: 'DESPESAS OPERACIONAIS',
     icon: 'Tag',
     color: 'bg-gray-500',
   })
@@ -119,7 +132,7 @@ export default function Categories() {
     setEditingCategory(null)
     setFormData({
       nome_simplificado: '',
-      tipo_grupo: 'Despesas Operacionais',
+      tipo_grupo: 'DESPESAS OPERACIONAIS',
       icon: 'Tag',
       color: 'bg-blue-500',
     })
@@ -161,6 +174,30 @@ export default function Categories() {
 
     const groupToUse =
       isAddingCustomGroup && customGroup ? customGroup : formData.tipo_grupo
+
+    const normalizedName = normalizeString(formData.nome_simplificado)
+    const normalizedGroup = normalizeString(groupToUse)
+
+    const categoryExists = categories.some(
+      (c) =>
+        c.id !== editingCategory?.id &&
+        normalizeString(c.nome_simplificado) === normalizedName,
+    )
+
+    if (categoryExists) {
+      toast.error('Esta categoria ou grupo já existe.')
+      return
+    }
+
+    if (isAddingCustomGroup && customGroup) {
+      const groupExists = allGroups.some(
+        (g) => normalizeString(g) === normalizedGroup,
+      )
+      if (groupExists) {
+        toast.error('Esta categoria ou grupo já existe.')
+        return
+      }
+    }
 
     try {
       if (editingCategory) {
@@ -210,7 +247,19 @@ export default function Categories() {
   }
 
   const allGroups = Array.from(
-    new Set([...DEFAULT_GROUPS, ...categories.map((c) => c.tipo_grupo)]),
+    new Set([
+      ...STANDARD_GROUPS,
+      ...(editingCategory ? [editingCategory.tipo_grupo] : []),
+      ...categories
+        .filter((c) => {
+          const isOrphan =
+            c.criada_por_usuario === false &&
+            !STANDARD_GROUPS.includes(c.tipo_grupo) &&
+            c.tipo_grupo.toLowerCase() === c.tipo_grupo
+          return !isOrphan
+        })
+        .map((c) => c.tipo_grupo),
+    ]),
   )
 
   const groupedCategories = categories.reduce(
@@ -257,7 +306,9 @@ export default function Categories() {
               <div className="space-y-3 flex-1">
                 {cats.map((cat) => {
                   const isSystem =
-                    !cat.criada_por_usuario || !cat.organization_id
+                    !cat.criada_por_usuario ||
+                    !cat.organization_id ||
+                    cat.permite_customizacao === false
                   return (
                     <div
                       key={cat.id}

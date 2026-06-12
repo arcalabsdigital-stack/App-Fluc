@@ -114,6 +114,7 @@ function normalizeString(str: string) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\s\-_]/g, '')
 }
 
 const formSchema = z.object({
@@ -182,11 +183,24 @@ export function TransactionForm({
 
   const uniqueGroups = useMemo(() => {
     const customGroups = categoriasSimplificadas
+      .filter((c) => {
+        const isSelected =
+          transactionToEdit &&
+          (c.nome_simplificado === transactionToEdit.categoria_id ||
+            c.id === transactionToEdit.categoria_id)
+        if (isSelected) return true
+
+        const isOrphan =
+          c.criada_por_usuario === false &&
+          !STANDARD_GROUPS.includes(c.tipo_grupo) &&
+          c.tipo_grupo.toLowerCase() === c.tipo_grupo
+        return !isOrphan
+      })
       .map((c) => c.tipo_grupo)
       .filter((g) => !STANDARD_GROUPS.includes(g))
 
     return [...new Set([...STANDARD_GROUPS, ...customGroups])]
-  }, [categoriasSimplificadas])
+  }, [categoriasSimplificadas, transactionToEdit])
 
   const [currentTip, setCurrentTip] = useState<{
     id: string
@@ -339,7 +353,7 @@ export function TransactionForm({
     )
 
     if (categoryExists) {
-      toast.error('A categoria ou grupo já existe')
+      toast.error('Esta categoria ou grupo já existe.')
       return
     }
 
@@ -350,7 +364,7 @@ export function TransactionForm({
         (g) => normalizeString(g) === normalizedGroup,
       )
       if (groupExists) {
-        toast.error('A categoria ou grupo já existe')
+        toast.error('Esta categoria ou grupo já existe.')
         return
       }
       finalGroup = newGroupName

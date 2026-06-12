@@ -71,12 +71,23 @@ export function DreTab() {
     async function load() {
       const { data: orgId } = await supabase.rpc('get_current_user_org_id')
 
-      const [{ data: categories }, { data: txs }] = await Promise.all([
-        supabase.from('categories').select('*'),
-        supabase.from('transactions').select('*').eq('organization_id', orgId),
-      ])
+      const [{ data: categories }, { data: simCategories }, { data: txs }] =
+        await Promise.all([
+          supabase.from('categories').select('*'),
+          supabase
+            .from('categoria_simplificada')
+            .select('*')
+            .or(`organization_id.eq.${orgId},organization_id.is.null`),
+          supabase
+            .from('transactions')
+            .select('*')
+            .eq('organization_id', orgId),
+        ])
 
       const categoriesMap = new Map(categories?.map((c) => [c.id, c]))
+      const simCategoriesMap = new Map(
+        simCategories?.map((c) => [c.nome_simplificado, c]),
+      )
 
       const end = new Date()
       const start = subMonths(end, 11)
@@ -143,14 +154,25 @@ export function DreTab() {
           if (!m) return
 
           const amount = Number(t.amount || t.valor)
-          const cat =
-            categoriesMap.get(t.category) ||
-            Array.from(categoriesMap.values()).find(
-              (c) => c.nome === t.category,
-            )
+          let accGroup = null
+          let natContabil = null
 
-          const accGroup = cat?.accounting_group
-          const natContabil = cat?.natureza_contabil
+          const simCat =
+            simCategoriesMap.get(t.category) ||
+            simCategoriesMap.get(t.categoria_id)
+
+          if (simCat) {
+            accGroup = simCat.accounting_group
+            natContabil = simCat.natureza_contabil
+          } else {
+            const cat =
+              categoriesMap.get(t.category) ||
+              Array.from(categoriesMap.values()).find(
+                (c) => c.nome === t.category,
+              )
+            accGroup = cat?.accounting_group
+            natContabil = cat?.natureza_contabil
+          }
 
           if (natContabil === 'Receita' && accGroup === 'Receita Operacional') {
             m.rob += amount
@@ -161,7 +183,10 @@ export function DreTab() {
           } else if (accGroup === 'Custo Direto') {
             m.cpv += amount
             tot.cpv += amount
-          } else if (accGroup === 'Operacional') {
+          } else if (
+            accGroup === 'Operacional' ||
+            accGroup === 'CUSTOS FIXOS'
+          ) {
             m.despesasOperacionais += amount
             tot.despesasOperacionais += amount
           } else if (accGroup === 'Não Desembolsável') {
