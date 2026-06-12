@@ -733,7 +733,7 @@ export function TransactionForm({
                   render={({ field }) => {
                     return (
                       <FormItem>
-                        <FormLabel>Categoria Simplificada</FormLabel>
+                        <FormLabel>Categoria</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           defaultValue={field.value}
