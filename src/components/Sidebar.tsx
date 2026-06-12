@@ -14,6 +14,7 @@ import {
   Tag,
   ShieldCheck,
   RepeatIcon,
+  Folder,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -248,6 +249,14 @@ export function Sidebar({
               label="Gastos Recorrentes"
               to="/recurring"
               isActive={pathname === '/recurring'}
+              onClick={onNavigate}
+            />
+            <SidebarItem
+              id="sidebar-item-Categorias"
+              icon={Folder}
+              label="Categorias"
+              to="/categories"
+              isActive={pathname === '/categories'}
               onClick={onNavigate}
             />
             <SidebarItem

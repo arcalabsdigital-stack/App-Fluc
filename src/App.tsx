@@ -18,6 +18,7 @@ import Checkout from './pages/Checkout'
 import Valuation from './pages/Valuation'
 import Budgets from './pages/Budgets'
 import Recurring from './pages/Recurring'
+import Categories from './pages/Categories'
 import AdminCoupons from './pages/admin/Coupons'
 import AdminStaff from './pages/admin/Staff'
 import Accounts from './pages/Accounts'
@@ -51,6 +52,7 @@ const App = () => (
                 <Route path="/valuation" element={<Valuation />} />
                 <Route path="/budgets" element={<Budgets />} />
                 <Route path="/recurring" element={<Recurring />} />
+                <Route path="/categories" element={<Categories />} />
                 <Route path="/admin/coupons" element={<AdminCoupons />} />
                 <Route path="/admin/staff" element={<AdminStaff />} />
               </Route>
