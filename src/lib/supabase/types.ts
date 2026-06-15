@@ -807,9 +807,13 @@ export type Database = {
           onboarding_completed: boolean
           organization_id: string
           plan: string | null
+          privacy_accepted_at: string | null
+          privacy_version: string | null
           razao_social_ou_nome: string | null
           role: string
           telefone: string | null
+          terms_accepted_at: string | null
+          terms_version: string | null
           tipo_documento: string | null
           updated_at: string | null
         }
@@ -824,9 +828,13 @@ export type Database = {
           onboarding_completed?: boolean
           organization_id: string
           plan?: string | null
+          privacy_accepted_at?: string | null
+          privacy_version?: string | null
           razao_social_ou_nome?: string | null
           role?: string
           telefone?: string | null
+          terms_accepted_at?: string | null
+          terms_version?: string | null
           tipo_documento?: string | null
           updated_at?: string | null
         }
@@ -841,9 +849,13 @@ export type Database = {
           onboarding_completed?: boolean
           organization_id?: string
           plan?: string | null
+          privacy_accepted_at?: string | null
+          privacy_version?: string | null
           razao_social_ou_nome?: string | null
           role?: string
           telefone?: string | null
+          terms_accepted_at?: string | null
+          terms_version?: string | null
           tipo_documento?: string | null
           updated_at?: string | null
         }
@@ -1547,6 +1559,10 @@ export const Constants = {
 //   razao_social_ou_nome: text (nullable)
 //   telefone: text (nullable)
 //   onboarding_completed: boolean (not null, default: false)
+//   terms_accepted_at: timestamp with time zone (nullable)
+//   terms_version: text (nullable, default: '1.0'::text)
+//   privacy_accepted_at: timestamp with time zone (nullable)
+//   privacy_version: text (nullable, default: '1.0'::text)
 // Table: recurring_transactions
 //   id: uuid (not null, default: gen_random_uuid())
 //   organization_id: uuid (not null)
