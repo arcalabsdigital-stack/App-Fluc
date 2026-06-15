@@ -27,7 +27,6 @@ import Planejamento from './pages/Planejamento'
 import { TransactionProvider } from '@/stores/useTransactionStore'
 import { AuthProvider } from '@/hooks/use-auth'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
-import { LegalConsentOverlay } from '@/components/LegalConsentOverlay'
 
 const App = () => (
   <BrowserRouter
@@ -38,7 +37,6 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <LegalConsentOverlay />
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />

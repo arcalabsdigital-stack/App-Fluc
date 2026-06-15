@@ -11,7 +11,6 @@ export const CURRENT_TERMS_VERSION = '1.0'
 
 export function ConsentModal() {
   const { profile, user, updateProfileContext } = useAuth()
-  const [open, setOpen] = useState(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [privacyAccepted, setPrivacyAccepted] = useState(false)
 
@@ -26,36 +25,25 @@ export function ConsentModal() {
   const startTour = useTourStore((state: any) => state.startTour)
 
   useEffect(() => {
-    if (profile && user) {
-      const needsConsent =
-        !profile.terms_accepted_at ||
-        !profile.privacy_accepted_at ||
-        profile.terms_version !== CURRENT_TERMS_VERSION ||
-        profile.privacy_version !== CURRENT_TERMS_VERSION
-
-      setOpen(needsConsent)
-    }
-  }, [profile, user])
-
-  useEffect(() => {
-    if (open) {
-      const checkScrolls = () => {
-        if (termsRef.current) {
-          const maxScroll =
-            termsRef.current.scrollHeight - termsRef.current.clientHeight
-          if (maxScroll <= 5) setTermsProgress(100)
-        }
-        if (privacyRef.current) {
-          const maxScroll =
-            privacyRef.current.scrollHeight - privacyRef.current.clientHeight
-          if (maxScroll <= 5) setPrivacyProgress(100)
-        }
+    const checkScrolls = () => {
+      if (termsRef.current) {
+        const maxScroll =
+          termsRef.current.scrollHeight - termsRef.current.clientHeight
+        if (maxScroll <= 5) setTermsProgress(100)
       }
-      setTimeout(checkScrolls, 100)
-      window.addEventListener('resize', checkScrolls)
-      return () => window.removeEventListener('resize', checkScrolls)
+      if (privacyRef.current) {
+        const maxScroll =
+          privacyRef.current.scrollHeight - privacyRef.current.clientHeight
+        if (maxScroll <= 5) setPrivacyProgress(100)
+      }
     }
-  }, [open])
+    const timeoutId = setTimeout(checkScrolls, 100)
+    window.addEventListener('resize', checkScrolls)
+    return () => {
+      window.removeEventListener('resize', checkScrolls)
+      clearTimeout(timeoutId)
+    }
+  }, [])
 
   const handleTermsScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget
@@ -91,12 +79,22 @@ export function ConsentModal() {
     if (!user || !profile) return
     setLoading(true)
 
+    const { data: orgId } = await supabase.rpc('get_current_user_org_id')
+    const finalOrgId = orgId || profile.organization_id
+
+    if (!finalOrgId) {
+      toast.error('Organização não identificada.')
+      setLoading(false)
+      return
+    }
+
     const now = new Date().toISOString()
     const updates = {
       terms_accepted_at: now,
       terms_version: CURRENT_TERMS_VERSION,
       privacy_accepted_at: now,
       privacy_version: CURRENT_TERMS_VERSION,
+      onboarding_completed: true,
     }
 
     const { error } = await supabase
@@ -110,10 +108,24 @@ export function ConsentModal() {
       return
     }
 
+    await supabase.from('audit_logs').insert({
+      organization_id: finalOrgId,
+      user_id: user.id,
+      action: 'UPDATE',
+      entity_type: 'USER',
+      entity_name: profile.full_name || 'Usuário',
+      details: {
+        action: 'scroll-to-agree',
+        event: 'Consentimento de Termos e Privacidade',
+        terms_version: CURRENT_TERMS_VERSION,
+        privacy_version: CURRENT_TERMS_VERSION,
+        timestamp: now,
+      },
+    })
+
     if (typeof updateProfileContext === 'function') {
       updateProfileContext(updates)
     }
-    setOpen(false)
     setLoading(false)
 
     if (!profile.onboarding_completed) {
@@ -121,10 +133,8 @@ export function ConsentModal() {
     }
   }
 
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-[99999] bg-white overflow-y-auto">
+    <div className="min-h-screen w-full bg-white overflow-y-auto">
       <div className="max-w-3xl mx-auto py-12 px-4 flex flex-col gap-10">
         {/* Header */}
         <div className="text-center space-y-4">
@@ -170,7 +180,9 @@ export function ConsentModal() {
             <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary shrink-0">
               <FileText className="w-6 h-6" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">Termos de Uso</h2>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Termo de Uso do Fluc
+            </h2>
           </div>
 
           <div className="relative border border-gray-200 rounded-xl bg-white overflow-hidden shadow-inner">
@@ -185,63 +197,106 @@ export function ConsentModal() {
               <div className="max-w-none space-y-6 pb-8">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    1. Aceitação dos Termos
+                    === TERMO DE USO DO FLUC ===
                   </h3>
-                  <p>
-                    Ao acessar e usar o Fluc, você concorda em cumprir estes
-                    termos e condições na íntegra. Caso discorde de alguma
-                    parte, pedimos que não utilize a plataforma. Nossa
-                    ferramenta evolui constantemente, podendo os termos sofrer
-                    atualizações.
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    1. Disposições Gerais
+                  </h3>
+                  <p className="mb-2">
+                    Este documento estabelece as condições de uso do Fluc. A
+                    plataforma é operada por 54.947.121 MARCIO DE OLIVEIRA
+                    MORAIS, pessoa jurídica de direito privado, inscrita no CNPJ
+                    54.947.121/0001-74, com sede na Rua Angelina Gaeta, 63,
+                    Taboão, São Bernardo do Campo, SP.
                   </p>
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    2. Uso da Plataforma
+                    2. Condição de Uso e Cadastro
                   </h3>
-                  <p>
-                    Você é responsável por manter a confidencialidade de sua
-                    conta e senha. O Fluc é uma plataforma de gestão financeira
-                    desenhada para ajudar você e sua empresa a organizar
-                    finanças. Não somos uma instituição financeira, mas sim uma
-                    ferramenta de controle gerencial.
+                  <p className="mb-2">
+                    Para utilizar a plataforma, o usuário deve realizar um
+                    cadastro fornecendo informações verdadeiras, atualizadas e
+                    completas. O usuário é inteiramente responsável por manter a
+                    confidencialidade de sua senha e por todas as atividades
+                    realizadas em sua conta.
                   </p>
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    3. Assinaturas e Pagamentos
+                    3. Serviços Oferecidos
                   </h3>
-                  <p>
-                    O uso contínuo das ferramentas premium do Fluc exige uma
-                    assinatura ativa. O não pagamento pode resultar na suspensão
-                    do acesso às funcionalidades avançadas, preservando, no
-                    entanto, seus dados por um período de carência especificado
-                    em contrato.
+                  <p className="mb-2">
+                    O Fluc oferece funcionalidades de gestão financeira, tais
+                    como controle de receitas e despesas, projeção de fluxo de
+                    caixa, planejamento financeiro, conciliação bancária, DRE,
+                    valuation e gestão de orçamentos.
                   </p>
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    4. Propriedade Intelectual
+                    4. Modelo de Assinatura e Pagamento
                   </h3>
-                  <p>
-                    Todos os direitos de propriedade intelectual relacionados à
-                    plataforma Fluc pertencem aos seus desenvolvedores e
-                    titulares legais, não sendo permitida cópia ou engenharia
-                    reversa de suas funções. O conteúdo gerado por você é de sua
-                    propriedade.
+                  <p className="mb-2">
+                    O acesso a certas funcionalidades é concedido mediante
+                    modelo de assinatura e cobrança recorrente, processado por
+                    gateways de pagamento parceiros, como Stripe e Mercado Pago.
+                    O usuário pode alterar seu plano a qualquer momento de
+                    acordo com as regras estabelecidas na plataforma, estando
+                    ciente de que as renovações ocorrem automaticamente.
                   </p>
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    5. Limitação de Responsabilidade
+                    5. Cancelamento e Rescisão
                   </h3>
-                  <p>
-                    O Fluc não se responsabiliza por perdas financeiras
-                    decorrentes de decisões tomadas com base nos relatórios
-                    gerados. Os dados são fornecidos "como estão", e a precisão
-                    depende das entradas do usuário e conciliações feitas.
+                  <p className="mb-2">
+                    O usuário pode solicitar o cancelamento da sua assinatura a
+                    qualquer momento. A conta pode ser suspensa ou cancelada
+                    pelo Fluc em casos de inadimplência, violação destes termos
+                    ou atividades fraudulentas.
                   </p>
                 </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    6. Direitos Autorais e Propriedade Intelectual
+                  </h3>
+                  <p className="mb-2">
+                    Todos os direitos de propriedade intelectual relativos à
+                    plataforma, incluindo códigos, design, marcas e
+                    documentações, pertencem exclusivamente ao Fluc. É concedida
+                    ao usuário apenas uma licença de uso limitada, não exclusiva
+                    e intransferível.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    7. Limitação de Responsabilidade
+                  </h3>
+                  <p className="mb-2">
+                    O Fluc não se responsabiliza por falhas de conexão à
+                    internet, problemas em serviços de terceiros (como os
+                    gateways de pagamento) ou por quaisquer decisões financeiras
+                    ou de negócios tomadas pelos usuários com base nas
+                    informações fornecidas pela plataforma.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    8. Disposições Finais
+                  </h3>
+                  <p>
+                    Estes Termos de Uso são regidos e interpretados de acordo
+                    com as leis do Brasil (legislação brasileira). Fica eleito o
+                    foro da comarca de São Bernardo do Campo, Estado de São
+                    Paulo, para a resolução de quaisquer conflitos decorrentes
+                    deste documento.
+                  </p>
+                </div>
+                {/* Spacer to ensure scrollability */}
+                <div className="h-12 w-full"></div>
               </div>
             </div>
           </div>
@@ -275,7 +330,7 @@ export function ConsentModal() {
               <Shield className="w-6 h-6" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900">
-              Política de Privacidade
+              Política de Privacidade do Fluc
             </h2>
           </div>
 
@@ -291,64 +346,125 @@ export function ConsentModal() {
               <div className="max-w-none space-y-6 pb-8">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    1. Coleta de Dados
+                    === POLÍTICA DE PRIVACIDADE DO FLUC ===
                   </h3>
-                  <p>
-                    Coletamos informações que você fornece diretamente, como
-                    nome, email, dados financeiros lançados na plataforma e
-                    informações de perfil da organização, estritamente
-                    necessárias para a operação do sistema e prestação de
-                    serviço.
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    1. Identificação do Controlador
+                  </h3>
+                  <p className="mb-2">
+                    O Controlador de dados é 54.947.121 MARCIO DE OLIVEIRA
+                    MORAIS. O contato do Encarregado de Proteção de Dados (DPO)
+                    pode ser feito através do e-mail suporte@fluc.com.br.
                   </p>
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    2. Uso das Informações
+                    2. Dados Coletados e Bases Legais
                   </h3>
-                  <p>
-                    Utilizamos seus dados exclusivamente para fornecer e
-                    melhorar nossos serviços, calcular indicadores financeiros e
-                    personalizar sua experiência na plataforma Fluc. Não
-                    acessamos seus saldos bancários sem sua autorização
-                    explícita.
+                  <p className="mb-2">
+                    Coletamos dados de cadastro, informações financeiras, dados
+                    de pagamento, dados de navegação e comunicações. O
+                    tratamento desses dados possui bases legais na LGPD, como
+                    cumprimento de contrato, obrigação legal, exercício regular
+                    de direitos e legítimo interesse.
                   </p>
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    3. Compartilhamento e Terceiros
+                    3. Finalidades do Tratamento
                   </h3>
-                  <p>
-                    Não vendemos ou compartilhamos seus dados financeiros com
-                    terceiros, exceto quando estritamente exigido por lei ou
-                    para processar pagamentos através de parceiros seguros e
-                    homologados (ex: gateways de pagamento e emissão de notas
-                    fiscais).
+                  <p className="mb-2">
+                    Os dados são utilizados para a prestação do serviço
+                    contratado, melhoria da plataforma, segurança, processamento
+                    de faturamento e pagamentos, suporte ao usuário e
+                    cumprimento de obrigações legais.
                   </p>
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    4. Segurança dos Dados
+                    4. Compartilhamento de Dados
                   </h3>
-                  <p>
-                    Implementamos medidas de segurança rígidas e padrões de
-                    criptografia para proteger suas informações contra acesso
-                    não autorizado, alterações ou destruição. Seus dados estão
-                    hospedados em servidores de alta disponibilidade e
-                    confiabilidade.
+                  <p className="mb-2">
+                    Os dados poderão ser compartilhados apenas quando
+                    necessário, sob rígidas condições de segurança e
+                    confidencialidade, com parceiros estratégicos de tecnologia
+                    e operação, incluindo Stripe, Mercado Pago, AWS, Skip Cloud
+                    e Supabase.
                   </p>
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    5. Seus Direitos
+                    5. Segurança dos Dados
                   </h3>
-                  <p>
-                    Você tem o direito de solicitar a exclusão de sua conta e de
-                    todos os dados associados a qualquer momento. Além de poder
-                    exportar suas informações. Para isso, basta acessar as
-                    configurações ou entrar em contato com o suporte através dos
-                    canais oficiais.
+                  <p className="mb-2">
+                    Adotamos medidas rígidas de segurança da informação, como
+                    criptografia (TLS/SSL para trânsito e AES-256 para repouso),
+                    para proteger seus dados contra acessos não autorizados.
+                    Possuímos política de notificação de incidentes de
+                    segurança.
                   </p>
                 </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    6. Retenção e Exclusão
+                  </h3>
+                  <p className="mb-2">
+                    Seus dados pessoais são armazenados pelo tempo necessário
+                    para atingir as finalidades do serviço ou obrigações legais.
+                    O usuário pode, a qualquer momento, solicitar a exclusão de
+                    seus dados, que será atendida salvo obrigações de retenção
+                    legal.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    7. Direitos do Titular
+                  </h3>
+                  <p className="mb-2">
+                    De acordo com o Art. 18 da LGPD, você possui direitos como
+                    confirmação da existência de tratamento, acesso, correção,
+                    anonimização, portabilidade, eliminação e revogação de
+                    consentimento, que podem ser exercidos via solicitação por
+                    e-mail.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    8. Cookies
+                  </h3>
+                  <p className="mb-2">
+                    Utilizamos cookies essenciais para o funcionamento da
+                    plataforma, bem como cookies de performance e funcionais
+                    para proporcionar uma melhor experiência de navegação e uso
+                    das ferramentas.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    9. Alterações
+                  </h3>
+                  <p className="mb-2">
+                    Esta Política de Privacidade poderá ser alterada a qualquer
+                    momento. Modificações significativas serão notificadas aos
+                    usuários com antecedência mínima de 15 dias, garantindo a
+                    transparência no tratamento dos seus dados.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    10. Contato
+                  </h3>
+                  <p>
+                    Para dúvidas ou solicitações sobre seus dados, entre em
+                    contato via e-mail (suporte@fluc.com.br). Em caso de
+                    disputas não resolvidas, o titular também tem o direito de
+                    acionar a Autoridade Nacional de Proteção de Dados (ANPD).
+                  </p>
+                </div>
+                {/* Spacer to ensure scrollability */}
+                <div className="h-12 w-full"></div>
               </div>
             </div>
           </div>

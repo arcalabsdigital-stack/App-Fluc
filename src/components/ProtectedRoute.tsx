@@ -2,7 +2,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { toast } from 'sonner'
-import { ConsentModal } from './ConsentModal'
+import { ConsentModal, CURRENT_TERMS_VERSION } from './ConsentModal'
 
 export const ProtectedRoute = () => {
   const { session, loading, profile, subscription, role } = useAuth()
@@ -121,10 +121,16 @@ export const ProtectedRoute = () => {
     }
   }
 
-  return (
-    <>
-      <ConsentModal />
-      <Outlet />
-    </>
-  )
+  const needsConsent =
+    profile &&
+    (!profile.terms_accepted_at ||
+      !profile.privacy_accepted_at ||
+      profile.terms_version !== CURRENT_TERMS_VERSION ||
+      profile.privacy_version !== CURRENT_TERMS_VERSION)
+
+  if (needsConsent) {
+    return <ConsentModal />
+  }
+
+  return <Outlet />
 }
