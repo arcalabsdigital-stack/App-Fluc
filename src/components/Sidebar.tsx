@@ -170,7 +170,7 @@ export function Sidebar({
       )}
     >
       {/* Brand & Workspace */}
-      <div className="flex flex-col mb-10 px-2 gap-2">
+      <div id="sidebar-workspace" className="flex flex-col mb-10 px-2 gap-2">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-black text-white rounded-lg flex items-center justify-center font-bold text-xl font-display">
             F
@@ -351,6 +351,7 @@ export function Sidebar({
           </div>
           <div className="space-y-1">
             <SidebarItem
+              id="sidebar-item-Ajuda"
               icon={LifeBuoy}
               label="Ajuda"
               to="/help"
@@ -358,6 +359,7 @@ export function Sidebar({
               onClick={onNavigate}
             />
             <SidebarItem
+              id="sidebar-item-Configurações"
               icon={Settings}
               label="Configurações"
               to="/settings"
@@ -378,7 +380,7 @@ export function Sidebar({
       </div>
 
       {/* Role Indicator & Logout */}
-      <div className="mt-auto space-y-2">
+      <div id="sidebar-footer-access" className="mt-auto space-y-2">
         {role && role !== 'visitante' && (
           <div className="px-4 py-2 bg-gray-100 rounded-lg text-center">
             <span className="text-xs font-medium text-gray-500 uppercase tracking-wider block mb-1">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTourStore } from '@/stores/useTourStore'
 import { Button } from '@/components/ui/button'
@@ -7,59 +7,235 @@ import { supabase } from '@/lib/supabase/client'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const tourSteps = [
+const allTourSteps = [
   {
-    target: 'dashboard-kpis',
-    title: 'Visão Geral',
+    target: 'unified-cash-position',
+    title: 'Visão Geral: Seus Saldos',
     content:
-      'Acompanhe seus saldos, despesas e receitas do mês. Essa é sua central de controle.',
+      'Estes são seus 3 saldos. Conciliado é o que bate com o banco. Realizado é o que já entrou ou saiu. Projetado é o futuro previsto. Eles formam a base do seu controle.',
     path: '/',
   },
   {
-    target: 'month-filters',
-    title: 'Filtros de Mês',
+    target: 'upcoming-transactions',
+    title: 'Visão Geral: Próximos Lançamentos',
     content:
-      'Selecione o mês e o ano para visualizar o diagnóstico de diferentes períodos.',
+      'Aqui aparecem as contas que vencem em breve. O laranja indica vencidos. Clique em qualquer item para conciliar ou pagar.',
+    path: '/',
+  },
+  {
+    target: 'unified-cash-position',
+    title: 'Visão Geral: Projeção de Caixa',
+    content:
+      'Sua projeção de caixa mostra se você terá dinheiro sobrando ou faltando em cada período. Verde é positivo, vermelho é negativo.',
+    path: '/',
+  },
+  {
+    target: 'sidebar-item-Diagnostico',
+    title: 'Menu: Meu Diagnóstico',
+    content:
+      'Acesse seu painel de saúde financeira. O Score e o GAP mostram se você está no controle ou precisa de ação.',
+    path: '/',
+  },
+  {
+    target: 'diagnostico-score-gap',
+    title: 'Meu Diagnóstico: Score e GAP',
+    content:
+      'Score vai de 0 a 100 e mede sua performance. GAP mostra a diferença entre planejado e realizado. Sem projeção, o Score fica zerado e aparece o alerta Atenção necessária.',
     path: '/diagnostico',
   },
   {
-    target: 'planning-container',
-    title: 'Planejamento Financeiro',
+    target: 'diagnostico-receitas-despesas',
+    title: 'Meu Diagnóstico: Receitas e Despesas',
     content:
-      'Defina suas metas de receita e mapeie seus custos para projetar seu resultado.',
-    path: '/planejamento',
+      'Compare o planejado versus o realizado por tipo. Isso revela se você está estimando bem seus números.',
+    path: '/diagnostico',
+  },
+  {
+    target: 'btn-simular-decisao',
+    title: 'Meu Diagnóstico: Simular Decisão',
+    content:
+      'Teste cenários antes de decidir. Que tal simular uma nova despesa ou receita e ver o impacto no caixa?',
+    path: '/diagnostico',
+  },
+  {
+    target: 'month-filters',
+    title: 'Meu Diagnóstico: Filtros de Mês',
+    content:
+      'Use este filtro para navegar entre meses. Todo o diagnóstico se atualiza automaticamente para o período escolhido.',
+    path: '/diagnostico',
+  },
+  {
+    target: 'sidebar-item-Transações',
+    title: 'Menu: Transações',
+    content:
+      'Esta é a tela central de registros. Toda receita, despesa, transferência e projeção vive aqui.',
+    path: '/diagnostico',
   },
   {
     target: 'transactions-list',
-    title: 'Gestão de Transações',
+    title: 'Transações: Tabela de Registros',
     content:
-      'Aqui você visualiza todas as suas entradas e saídas e seus respectivos status.',
+      'Veja todas as entradas e saídas. Use os filtros para encontrar qualquer registro. Receita aparece em verde, Despesa em vermelho.',
     path: '/payments',
   },
   {
     target: 'btn-add-transaction',
-    title: 'Nova Transação',
-    content: 'Adicione rapidamente novas receitas ou despesas clicando aqui.',
+    title: 'Transações: Nova Transação',
+    content:
+      'Clique aqui para lançar uma receita ou despesa rápida. É o botão mais usado do Fluc. Preencha data, descrição, categoria, valor e forma de pagamento.',
     path: '/payments',
   },
   {
-    target: 'categories-list',
-    title: 'Categorias',
+    target: 'btn-import-csv',
+    title: 'Transações: Importar via CSV',
     content:
-      'Organize suas transações com categorias pré-definidas ou crie as suas próprias.',
-    path: '/categories',
+      'Se já tem uma planilha pronta, use o modelo CSV, preencha e importe tudo de uma vez. Agilidade na migração.',
+    path: '/payments',
+  },
+  {
+    target: 'transactions-status-col',
+    title: 'Transações: Status e Conciliação',
+    content:
+      'Pendente é projeção. Realizado é o que já aconteceu. Conciliado é o que bateu com o extrato bancário. O triângulo do Método PAC.',
+    path: '/payments',
+  },
+  {
+    target: 'sidebar-item-Contas',
+    title: 'Menu: Contas Bancárias',
+    content:
+      'Cadastre suas contas bancárias, cartões e carteiras. O saldo conciliado vem daqui.',
+    path: '/payments',
+  },
+  {
+    target: 'sidebar-item-Conciliacao',
+    title: 'Menu: Conciliação',
+    content:
+      'Compare suas transações com o extrato bancário. O Fluc ajuda a encontrar divergências automaticamente.',
+    path: '/payments',
+  },
+  {
+    target: 'sidebar-item-Orçamentos',
+    title: 'Menu: Orçamentos',
+    content:
+      'Defina limites de gasto por categoria e acompanhe o quanto já foi consumido.',
+    path: '/payments',
+  },
+  {
+    target: 'budgets-progress',
+    title: 'Orçamentos: Barra de Progresso',
+    content:
+      'Verde está dentro do previsto. Amarelo está perto do limite. Vermelho estourou. Controle visual e imediato.',
+    path: '/budgets',
+  },
+  {
+    target: 'sidebar-item-Recorrentes',
+    title: 'Menu: Gastos Recorrentes',
+    content:
+      'Cadastre contas que repetem todo mês: aluguel, salários, assinaturas. O Fluc gera as projeções automaticamente.',
+    path: '/budgets',
+  },
+  {
+    target: 'sidebar-item-Categorias',
+    title: 'Menu: Categorias',
+    content:
+      'Organize suas finanças por categorias personalizadas. Receitas e despesas separadas para clareza nos relatórios.',
+    path: '/budgets',
+  },
+  {
+    target: 'sidebar-item-Histórico',
+    title: 'Menu: Histórico',
+    content:
+      'Veja todos os planejamentos mensais já criados. Acompanhe a evolução das suas projeções de receita e custo ao longo do tempo.',
+    path: '/budgets',
+  },
+  {
+    target: 'btn-novo-planejamento',
+    title: 'Histórico: Novo Planejamento',
+    content:
+      'Inicie o planejamento de um novo mês. Defina meta de faturamento, mapeie custos fixos e variáveis, e projete seu resultado.',
+    path: '/planejamento',
+  },
+  {
+    target: 'planejamento-receitas',
+    title: 'Planejamento: Projeção de Receitas',
+    content:
+      'Defina sua meta de faturamento e descreva as fontes: contratos recorrentes, novos projetos, vendas. Use Replicar do mês anterior para agilizar.',
+    path: '/planejamento',
+  },
+  {
+    target: 'sidebar-item-DRE-Valuation',
+    title: 'Menu: DRE / Valuation',
+    content:
+      'Gere sua Demonstração do Resultado do Exercício e valuation da empresa. Exporte para PDF ou Excel.',
+    path: '/planejamento',
+  },
+  {
+    target: 'sidebar-item-Usuários',
+    title: 'Menu: Gerenciar Usuários',
+    content:
+      'Adicione colaboradores e contadores. Defina permissões de acesso por perfil.',
+    path: '/planejamento',
+  },
+  {
+    target: 'sidebar-workspace',
+    title: 'Menu: Novo Workspace',
+    content:
+      'Aqui você vê em qual workspace está trabalhando. Para criar um novo workspace ou alternar entre empresas, clique nesta área.',
+    path: '/planejamento',
+  },
+  {
+    target: 'sidebar-item-Configurações',
+    title: 'Menu: Configurações',
+    content: 'Ajuste dados da empresa, logo, preferências e integrações.',
+    path: '/planejamento',
+  },
+  {
+    target: 'sidebar-item-Ajuda',
+    title: 'Menu: Ajuda',
+    content: 'Acesso ao tutorial, FAQ e suporte. Se travar, comece por aqui.',
+    path: '/planejamento',
+  },
+  {
+    target: 'sidebar-item-Como-Funciona',
+    title: 'Menu: Como Funciona',
+    content:
+      'Reinicie este tour de onboarding a qualquer momento. Use quando quiser revisar uma funcionalidade.',
+    path: '/planejamento',
+  },
+  {
+    target: 'sidebar-footer-access',
+    title: 'Perfil e Acesso',
+    content:
+      'Aqui você vê seu perfil de acesso e pode sair com segurança. O Fluc protege seus dados financeiros.',
+    path: '/planejamento',
+  },
+  {
+    target: 'tour-end-modal',
+    title: 'Fim do Tour',
+    content:
+      'Parabéns! Você conheceu o Fluc. Agora cadastre sua primeira transação e comece a transformar sua gestão financeira com o Método PAC.',
+    path: '/planejamento',
   },
 ]
 
 export function TourOverlay() {
   const { isActive, step, endTour, nextStep, prevStep } = useTourStore()
-  const { user, profile, updateProfileContext } = useAuth()
+  const { user, profile, updateProfileContext, role } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [isReady, setIsReady] = useState(false)
+
+  const prevStepRef = useRef(step)
+
+  const tourSteps = useMemo(() => {
+    return allTourSteps.filter((s) => {
+      if (s.target === 'sidebar-item-Usuários' && role !== 'admin') return false
+      return true
+    })
+  }, [role])
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
@@ -71,23 +247,51 @@ export function TourOverlay() {
   useEffect(() => {
     if (!isActive) return
     const currentStep = tourSteps[step]
+    if (!currentStep) {
+      handleEnd()
+      return
+    }
+
     if (location.pathname !== currentStep.path) {
       setIsReady(false)
-      // Small delay to allow smooth transition before showing tooltip
       setTimeout(() => navigate(currentStep.path), 300)
     } else {
       setIsReady(true)
     }
-  }, [isActive, step, location.pathname, navigate])
+  }, [isActive, step, location.pathname, navigate, tourSteps])
 
   useEffect(() => {
     if (!isActive || isMobile || !isReady) return
     const currentStep = tourSteps[step]
+    if (!currentStep) return
+
+    if (prevStepRef.current !== step) {
+      setTargetRect(null)
+      prevStepRef.current = step
+    }
 
     const updatePosition = () => {
+      if (currentStep.target === 'tour-end-modal') {
+        setTargetRect(null)
+        return
+      }
+
       const el = document.getElementById(currentStep.target)
       if (el) {
-        setTargetRect(el.getBoundingClientRect())
+        const rect = el.getBoundingClientRect()
+        setTargetRect((prev) => {
+          if (
+            !prev ||
+            Math.abs(prev.top - rect.top) > 5 ||
+            Math.abs(prev.left - rect.left) > 5
+          ) {
+            if (!prev) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }
+            return rect
+          }
+          return prev
+        })
       } else {
         setTargetRect(null)
       }
@@ -96,7 +300,7 @@ export function TourOverlay() {
     updatePosition()
     const interval = setInterval(updatePosition, 100)
     return () => clearInterval(interval)
-  }, [isActive, step, isMobile, isReady])
+  }, [isActive, step, isMobile, isReady, tourSteps])
 
   useEffect(() => {
     if (!localStorage.getItem('fluc_tour_completed')) {
@@ -106,6 +310,9 @@ export function TourOverlay() {
 
   if (!isActive) return null
 
+  const currentStep = tourSteps[step]
+  if (!currentStep) return null
+
   const handleEnd = async () => {
     endTour()
     if (user && profile && !profile.onboarding_completed) {
@@ -113,7 +320,9 @@ export function TourOverlay() {
         .from('profiles')
         .update({ onboarding_completed: true })
         .eq('id', user.id)
-      updateProfileContext({ onboarding_completed: true })
+      if (updateProfileContext) {
+        updateProfileContext({ onboarding_completed: true })
+      }
     }
   }
 
@@ -125,7 +334,36 @@ export function TourOverlay() {
     }
   }
 
-  const currentStep = tourSteps[step]
+  if (currentStep.target === 'tour-end-modal') {
+    return (
+      <div className="fixed inset-0 z-[100] pointer-events-none flex items-center justify-center">
+        <div
+          className="absolute inset-0 bg-black/60 pointer-events-auto transition-opacity duration-300"
+          onClick={(e) => e.stopPropagation()}
+        />
+        <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md pointer-events-auto z-[102] animate-fade-in-up text-center mx-4">
+          <h3 className="font-bold text-2xl text-slate-900 mb-4">
+            {currentStep.title}
+          </h3>
+          <p className="text-slate-600 mb-8 leading-relaxed">
+            {currentStep.content}
+          </p>
+          <div className="flex flex-col gap-3">
+            <Button
+              size="lg"
+              onClick={() => {
+                handleEnd()
+                navigate('/payments')
+              }}
+              className="w-full bg-primary hover:bg-primary/90 text-md h-12"
+            >
+              Ir para Nova Transação
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   let topPos = window.innerHeight / 2 - 100
   let leftPos = window.innerWidth / 2 - 160

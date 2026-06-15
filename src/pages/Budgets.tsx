@@ -46,7 +46,7 @@ export default function Budgets() {
 
         <TabsContent value="budgets" className="animate-fade-in">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="h-[600px]">
+            <div id="budgets-progress" className="h-[600px]">
               <BudgetsProgress />
             </div>
 

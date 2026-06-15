@@ -158,9 +158,13 @@ const Index = () => {
         </div>
       </div>
 
-      <UnifiedCashPosition kpis={kpis} />
+      <div id="unified-cash-position">
+        <UnifiedCashPosition kpis={kpis} />
+      </div>
 
-      <UpcomingTransactions />
+      <div id="upcoming-transactions">
+        <UpcomingTransactions />
+      </div>
       <AccountsPosition />
 
       {/* KPI Row */}

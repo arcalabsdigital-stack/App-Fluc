@@ -224,10 +224,10 @@ export function TransactionsTable({
         </div>
         <div className="flex items-center gap-2">
           {!isVisitor && (
-            <span id="btn-add-transaction">
+            <span id="btn-import-csv">
               <ImportTransactions onSuccess={onChange} />
             </span>
-          )}
+          )}{' '}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
@@ -292,7 +292,10 @@ export function TransactionsTable({
               <TableHead className="hidden md:table-cell lg:w-[140px] lg:whitespace-nowrap lg:truncate">
                 Forma de Pagamento
               </TableHead>
-              <TableHead className="w-[110px] text-center lg:whitespace-nowrap">
+              <TableHead
+                id="transactions-status-col"
+                className="w-[110px] text-center lg:whitespace-nowrap"
+              >
                 Status
               </TableHead>
               <TableHead className="w-[100px] text-center lg:whitespace-nowrap">

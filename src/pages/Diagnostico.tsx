@@ -78,6 +78,7 @@ export default function Diagnostico() {
           className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-between sm:justify-start flex-wrap sm:flex-nowrap"
         >
           <Button
+            id="btn-simular-decisao"
             onClick={() => setIsSimulacaoOpen(true)}
             className="gap-2 w-full sm:w-auto order-last sm:order-first"
             variant="secondary"
@@ -222,7 +223,10 @@ export default function Diagnostico() {
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <Card className="rounded-2xl border-none shadow-sm">
+            <Card
+              id="diagnostico-score-gap"
+              className="rounded-2xl border-none shadow-sm"
+            >
               <CardContent className="p-6 flex flex-col h-full justify-between">
                 <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-4">
                   <Activity className="w-4 h-4" /> Score de Saúde Financeira
@@ -303,7 +307,10 @@ export default function Diagnostico() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border-none shadow-sm">
+            <Card
+              id="diagnostico-receitas-despesas"
+              className="rounded-2xl border-none shadow-sm"
+            >
               <CardContent className="p-6 flex flex-col h-full justify-between">
                 <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-4">
                   <TrendingUp className="w-4 h-4 text-green-500" /> Receitas

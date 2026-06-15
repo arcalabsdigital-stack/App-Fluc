@@ -319,6 +319,7 @@ export default function Planejamento() {
             <ScrollArea className="h-[150px] lg:h-[calc(100vh-250px)]">
               <div className="flex flex-col p-2 gap-1">
                 <Button
+                  id="btn-novo-planejamento"
                   variant="ghost"
                   className="justify-start w-full"
                   onClick={() => {
@@ -453,7 +454,10 @@ export default function Planejamento() {
           </CardHeader>
           <CardContent>
             {step === 1 && (
-              <div className="space-y-6 animate-fade-in">
+              <div
+                id="planejamento-receitas"
+                className="space-y-6 animate-fade-in"
+              >
                 <div className="flex justify-end">
                   <Button
                     variant="outline"
