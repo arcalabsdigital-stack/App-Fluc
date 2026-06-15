@@ -33,6 +33,10 @@ export interface Profile {
   cnpj_ou_cpf?: string | null
   razao_social_ou_nome?: string | null
   onboarding_completed?: boolean
+  terms_accepted_at?: string | null
+  terms_version?: string | null
+  privacy_accepted_at?: string | null
+  privacy_version?: string | null
 }
 
 interface AuthContextType {

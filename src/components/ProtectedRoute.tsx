@@ -2,6 +2,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { toast } from 'sonner'
+import { ConsentModal } from './ConsentModal'
 
 export const ProtectedRoute = () => {
   const { session, loading, profile, subscription, role } = useAuth()
@@ -120,5 +121,10 @@ export const ProtectedRoute = () => {
     }
   }
 
-  return <Outlet />
+  return (
+    <>
+      <ConsentModal />
+      <Outlet />
+    </>
+  )
 }
