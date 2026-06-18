@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/client'
 import { FilterState } from '@/components/transactions/TransactionFilters'
 import { Transacao, TipoTransacao, FormaPagamento, Role } from '@/lib/types'
+import { extractUUID } from '@/lib/utils'
 import {
   format,
   addMonths,
@@ -541,7 +542,21 @@ export const transactionService = {
   },
 
   async deleteTransaction(id: string) {
-    const { error } = await supabase.from('transactions').delete().eq('id', id)
+    const cleanId = extractUUID(id)
+    const { error } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', cleanId)
+
+    if (error) throw error
+  },
+
+  async deleteTransactions(ids: string[]) {
+    const cleanIds = ids.map(extractUUID)
+    const { error } = await supabase
+      .from('transactions')
+      .delete()
+      .in('id', cleanIds)
 
     if (error) throw error
   },

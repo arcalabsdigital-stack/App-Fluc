@@ -65,7 +65,7 @@ export function TransactionsTable({
   onChange,
   isVisitor = false,
 }: TransactionsTableProps) {
-  const { categories, deleteTransaction, registerPayment } =
+  const { categories, deleteTransaction, deleteTransactions, registerPayment } =
     useTransactionStore()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [isDeletingBulk, setIsDeletingBulk] = useState(false)
@@ -145,9 +145,7 @@ export function TransactionsTable({
     if (selectedIds.length === 0) return
     setIsDeletingBulk(true)
     try {
-      for (const id of selectedIds) {
-        await deleteTransaction(id)
-      }
+      await deleteTransactions(selectedIds)
       setSelectedIds([])
       toast.success('Transações excluídas com sucesso!')
       if (onChange) onChange()
@@ -202,7 +200,7 @@ export function TransactionsTable({
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>
-                    Excluir transações em massa?
+                    Tem certeza que deseja excluir?
                   </AlertDialogTitle>
                   <AlertDialogDescription>
                     Você está prestes a excluir {selectedIds.length} transações.
@@ -454,7 +452,7 @@ export function TransactionsTable({
                         <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle>
-                              Tem certeza absoluta?
+                              Tem certeza que deseja excluir?
                             </AlertDialogTitle>
                             <AlertDialogDescription>
                               Esta ação não pode ser desfeita. Isso excluirá
