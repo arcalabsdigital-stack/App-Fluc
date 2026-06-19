@@ -4,6 +4,7 @@ import { transactionService } from '@/services/transactionService'
 import { supabase } from '@/lib/supabase/client'
 import { Conta, Transacao, TipoTransacao } from '@/lib/types'
 import { BankStatementEntry, parseOFX, parseCSV } from '@/lib/ofxParser'
+import { parseBancoInterPDF } from '@/lib/pdfParser'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -100,18 +101,20 @@ export function ReconciliationPanel() {
       let parsedBalance: number | undefined
 
       if (file.name.toLowerCase().endsWith('.pdf')) {
-        const formData = new FormData()
-        formData.append('file', file)
-        const { data, error } = await supabase.functions.invoke('parse-pdf', {
-          body: formData,
-        })
-        if (error) throw error
-
-        parsedEntries = data.entries.map((e: any) => ({
-          ...e,
-          date: new Date(e.date),
-        }))
-        parsedBalance = data.balance
+        try {
+          const arrayBuffer = await file.arrayBuffer()
+          const parsed = await parseBancoInterPDF(arrayBuffer)
+          parsedEntries = parsed.entries
+          parsedBalance = parsed.balance
+        } catch (pdfErr) {
+          console.error('PDF parsing error:', pdfErr)
+          toast.error(
+            'Não foi possível ler este PDF. Verifique se é um extrato do Banco Inter suportado.',
+          )
+          setIsProcessing(false)
+          if (fileInputRef.current) fileInputRef.current.value = ''
+          return
+        }
       } else {
         const content = await file.text()
         if (file.name.toLowerCase().endsWith('.ofx')) {
