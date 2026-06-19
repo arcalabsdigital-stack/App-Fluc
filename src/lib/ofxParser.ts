@@ -60,49 +60,121 @@ export function parseOFX(content: string): ParsedStatement {
 }
 
 export function parseCSV(content: string): ParsedStatement {
-  // Simple CSV parser for demonstration (Date, Amount, Description)
   const lines = content.split('\n')
   const entries: BankStatementEntry[] = []
 
-  // Skip header if obvious
-  let startIndex = 0
+  let separator = ','
+  const firstLines = lines.slice(0, 10).join('\n')
   if (
-    lines[0] &&
-    (lines[0].toLowerCase().includes('data') ||
-      lines[0].toLowerCase().includes('date'))
+    firstLines.includes(';') &&
+    firstLines.split(';').length > firstLines.split(',').length
   ) {
-    startIndex = 1
+    separator = ';'
+  }
+
+  let startIndex = 0
+  let dateIdx = 0
+  let amountIdx = 1
+  let descIdx = 2
+
+  for (let i = 0; i < lines.length; i++) {
+    const lower = lines[i].toLowerCase()
+    if (lower.includes('data') || lower.includes('date')) {
+      startIndex = i + 1
+      const headerParts = lower.split(separator).map((s) => s.trim())
+
+      const foundDate = headerParts.findIndex(
+        (p) => p.includes('data') || p.includes('date'),
+      )
+      const foundDesc = headerParts.findIndex(
+        (p) =>
+          p.includes('descri') ||
+          p.includes('historico') ||
+          p.includes('detail'),
+      )
+      const foundAmt = headerParts.findIndex(
+        (p) => p.includes('valor') || p.includes('amount'),
+      )
+
+      if (foundDate !== -1) dateIdx = foundDate
+      if (foundDesc !== -1) descIdx = foundDesc
+      if (foundAmt !== -1) amountIdx = foundAmt
+      break
+    }
   }
 
   for (let i = startIndex; i < lines.length; i++) {
     const line = lines[i].trim()
     if (!line) continue
 
-    const parts = line.split(',')
-    if (parts.length >= 3) {
-      // Assuming DD/MM/YYYY or YYYY-MM-DD
-      const datePart = parts[0].trim()
-      let date = new Date()
-      if (datePart.includes('/')) {
-        const [d, m, y] = datePart.split('/')
-        date = new Date(Number(y), Number(m) - 1, Number(d))
+    let parts: string[] = []
+    if (separator === ';') {
+      parts = line.split(';')
+    } else {
+      let current = ''
+      let inQuotes = false
+      for (let j = 0; j < line.length; j++) {
+        const char = line[j]
+        if (
+          char === '"' &&
+          (j === 0 || line[j - 1] === separator || inQuotes)
+        ) {
+          inQuotes = !inQuotes
+        } else if (char === separator && !inQuotes) {
+          parts.push(current)
+          current = ''
+        } else {
+          current += char
+        }
+      }
+      parts.push(current)
+    }
+
+    if (parts.length >= Math.max(dateIdx, amountIdx, descIdx) + 1) {
+      const datePart = parts[dateIdx].trim()
+      let date: Date | null = null
+
+      const dateRegexBr = /^(\d{2})\/(\d{2})\/(\d{4})$/
+      const matchBr = datePart.match(dateRegexBr)
+      if (matchBr) {
+        date = new Date(
+          Number(matchBr[3]),
+          Number(matchBr[2]) - 1,
+          Number(matchBr[1]),
+          12,
+          0,
+          0,
+        )
       } else {
-        date = new Date(datePart)
+        const parsed = new Date(datePart + 'T12:00:00')
+        if (!isNaN(parsed.getTime())) {
+          date = parsed
+        } else {
+          const parsed2 = new Date(datePart)
+          if (!isNaN(parsed2.getTime())) date = parsed2
+        }
       }
 
-      const amountPart = parts[1]
-        .trim()
-        .replace('R$', '')
-        .replace(/\./g, '')
-        .replace(',', '.')
-      const amount = parseFloat(amountPart)
+      if (!date || isNaN(date.getTime())) continue
 
-      const description = parts.slice(2).join(',').trim()
+      const description = parts[descIdx].trim().replace(/^"|"$/g, '')
+
+      const amountPart = parts[amountIdx].trim()
+      let cleanAmount = amountPart.replace(/[R$\s]/g, '')
+
+      if (cleanAmount.lastIndexOf(',') > cleanAmount.lastIndexOf('.')) {
+        cleanAmount = cleanAmount.replace(/\./g, '').replace(',', '.')
+      } else {
+        cleanAmount = cleanAmount.replace(/,/g, '')
+      }
+
+      const amount = parseFloat(cleanAmount)
+      if (isNaN(amount)) continue
 
       entries.push({
         id: Math.random().toString(36).substring(7),
         date,
-        amount: isNaN(amount) ? 0 : amount,
+        amount,
         description,
       })
     }
