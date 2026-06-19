@@ -209,6 +209,11 @@ export function RecurringTransactionsList() {
     (c) => c.tipo === 'Despesa' || c.tipo === 'expense',
   )
 
+  const totalAmount = recurring.reduce(
+    (acc, r) => acc + Number(r.amount || 0),
+    0,
+  )
+
   const frequencyLabel = (freq: string) => {
     switch (freq) {
       case 'monthly':
@@ -480,6 +485,23 @@ export function RecurringTransactionsList() {
                     )
                   })}
                 </tbody>
+                <tfoot className="bg-gray-100/60 border-t border-gray-200 sticky bottom-0">
+                  <tr>
+                    <td className="px-6 py-4 font-medium text-gray-900">
+                      Total de Gastos Recorrentes
+                    </td>
+                    <td className="px-6 py-4"></td>
+                    <td className="px-6 py-4"></td>
+                    <td className="px-6 py-4"></td>
+                    <td className="px-6 py-4 text-right font-semibold text-red-600 whitespace-nowrap">
+                      - R${' '}
+                      {totalAmount.toLocaleString('pt-BR', {
+                        minimumFractionDigits: 2,
+                      })}
+                    </td>
+                    <td className="px-6 py-4"></td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           )}
