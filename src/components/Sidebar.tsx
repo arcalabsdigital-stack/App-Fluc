@@ -328,6 +328,13 @@ export function Sidebar({
               </div>
               <div className="space-y-1 mb-6">
                 <SidebarItem
+                  icon={LayoutDashboard}
+                  label="Visão Geral"
+                  to="/admin/dashboard"
+                  isActive={pathname === '/admin/dashboard'}
+                  onClick={onNavigate}
+                />
+                <SidebarItem
                   icon={Tag}
                   label="Gestão de Cupons"
                   to="/admin/coupons"
