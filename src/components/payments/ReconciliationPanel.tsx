@@ -26,6 +26,7 @@ import { toast } from 'sonner'
 import { TransactionForm } from '@/components/transactions/TransactionForm'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import useTransactionStore from '@/stores/useTransactionStore'
 
 type ReconType = 'match' | 'statement_only' | 'system_only'
 
@@ -49,6 +50,17 @@ export function ReconciliationPanel() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [createFormOpen, setCreateFormOpen] = useState(false)
   const [prefilledTransaction, setPrefilledTransaction] = useState<any>(null)
+  const [inlineCategories, setInlineCategories] = useState<
+    Record<string, string>
+  >({})
+
+  const { categoriasSimplificadas, categories } = useTransactionStore()
+  const categoryOptions = Array.from(
+    new Set([
+      ...categoriasSimplificadas.map((c) => c.nome_simplificado),
+      ...categories.map((c) => c.nome),
+    ]),
+  ).sort()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -272,13 +284,14 @@ export function ReconciliationPanel() {
     try {
       setIsProcessing(true)
       const stmt = row.statement
+      const selectedCategory = inlineCategories[row.id] || 'Outros'
 
       const newTx = {
         data: stmt.date,
         descricao: stmt.description,
         valor: Math.abs(stmt.amount),
         amount_paid: Math.abs(stmt.amount),
-        categoria_id: 'Outros',
+        categoria_id: selectedCategory,
         tipo_id:
           stmt.amount < 0 ? TipoTransacao.Despesa : TipoTransacao.Receita,
         forma_pagamento_id: 'Outros',
@@ -301,6 +314,67 @@ export function ReconciliationPanel() {
       toast.error('Erro ao criar transação inteligente.')
     } finally {
       setIsProcessing(false)
+    }
+  }
+
+  const handleBulkCreateAndSettle = async () => {
+    const statementOnlyRows = reconciliationData.filter(
+      (r) => r.type === 'statement_only',
+    )
+    if (statementOnlyRows.length === 0) return
+
+    setIsProcessing(true)
+    let successCount = 0
+    let errorCount = 0
+
+    const newReconciliationData = [...reconciliationData]
+    const rowsToRemove: string[] = []
+
+    for (const row of statementOnlyRows) {
+      try {
+        const stmt = row.statement!
+        const selectedCategory = inlineCategories[row.id] || 'Outros'
+
+        const newTx = {
+          data: stmt.date,
+          descricao: stmt.description,
+          valor: Math.abs(stmt.amount),
+          amount_paid: Math.abs(stmt.amount),
+          categoria_id: selectedCategory,
+          tipo_id:
+            stmt.amount < 0 ? TipoTransacao.Despesa : TipoTransacao.Receita,
+          forma_pagamento_id: 'Outros',
+          status: 'pago',
+          is_conciliated: true,
+          account_id: selectedAccountId,
+          observacoes: 'Criado via conciliação inteligente',
+          is_recurring: false,
+        } as any
+
+        await transactionService.createTransaction(newTx)
+        successCount++
+        rowsToRemove.push(row.id)
+      } catch (error) {
+        console.error(error)
+        errorCount++
+      }
+    }
+
+    const filteredData = newReconciliationData.filter(
+      (r) => !rowsToRemove.includes(r.id),
+    )
+    setReconciliationData(filteredData)
+    await refreshAccounts()
+
+    setIsProcessing(false)
+
+    if (successCount > 0) {
+      toast.success(
+        `${successCount} transações criadas e baixadas com sucesso!`,
+      )
+    }
+    if (errorCount > 0) {
+      toast.error(`Erro ao criar ${errorCount} transações.`)
     }
   }
 
@@ -560,12 +634,32 @@ export function ReconciliationPanel() {
                   )}
                   {row.type === 'statement_only' && (
                     <div className="flex flex-col items-center gap-1 w-full">
-                      <span className="text-[10px] font-medium text-amber-600 uppercase text-center leading-tight">
+                      <span className="text-[10px] font-medium text-amber-600 uppercase text-center leading-tight mb-1">
                         Apenas Extrato
                       </span>
+                      <Select
+                        value={inlineCategories[row.id] || ''}
+                        onValueChange={(val) =>
+                          setInlineCategories((prev) => ({
+                            ...prev,
+                            [row.id]: val,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="w-full h-7 text-xs px-2 bg-white">
+                          <SelectValue placeholder="Categoria..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categoryOptions.map((cat) => (
+                            <SelectItem key={cat} value={cat}>
+                              {cat}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <Button
                         size="sm"
-                        className="bg-amber-600 hover:bg-amber-700 text-white w-full shadow-sm text-xs px-2"
+                        className="bg-amber-600 hover:bg-amber-700 text-white w-full shadow-sm text-xs px-2 h-7 mt-1"
                         onClick={() => handleQuickCreateAndSettle(i)}
                       >
                         <Zap className="w-3 h-3 mr-1" /> Criar e Baixar
@@ -648,6 +742,18 @@ export function ReconciliationPanel() {
                 </div>
               </div>
             ))}
+            {statementOnlyCount > 0 && (
+              <div className="p-4 bg-gray-50 border-t flex justify-end">
+                <Button
+                  onClick={handleBulkCreateAndSettle}
+                  disabled={isProcessing}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-lg transition-all"
+                >
+                  <Zap className="w-4 h-4 mr-2" />
+                  Criar e Baixar Tudo ({statementOnlyCount})
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
