@@ -348,6 +348,13 @@ export function Sidebar({
                   isActive={pathname === '/admin/staff'}
                   onClick={onNavigate}
                 />
+                <SidebarItem
+                  icon={Wallet}
+                  label="Gestão Financeira"
+                  to="/admin/financial"
+                  isActive={pathname === '/admin/financial'}
+                  onClick={onNavigate}
+                />
               </div>
             </div>
           )}

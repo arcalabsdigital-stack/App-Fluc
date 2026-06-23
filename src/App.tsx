@@ -23,6 +23,7 @@ import Categories from './pages/Categories'
 import AdminDashboard from './pages/admin/Dashboard'
 import AdminCoupons from './pages/admin/Coupons'
 import AdminStaff from './pages/admin/Staff'
+import AdminFinancial from './pages/admin/Financial'
 import Accounts from './pages/Accounts'
 import Planejamento from './pages/Planejamento'
 import { TransactionProvider } from '@/stores/useTransactionStore'
@@ -60,6 +61,7 @@ const App = () => (
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/admin/coupons" element={<AdminCoupons />} />
                 <Route path="/admin/staff" element={<AdminStaff />} />
+                <Route path="/admin/financial" element={<AdminFinancial />} />
                 <Route path="/planejamento" element={<Planejamento />} />
               </Route>
               <Route path="/onboarding" element={<Onboarding />} />
