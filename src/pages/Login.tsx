@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase/client'
 import { Eye, EyeOff, Lock, Mail, Loader2, ArrowRight } from 'lucide-react'
@@ -13,7 +14,15 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [lastLoginMethod, setLastLoginMethod] = useState<string | null>(null)
   const { signIn, signInWithGoogle, user } = useAuth()
+
+  useEffect(() => {
+    const method = localStorage.getItem('lastLoginMethod')
+    if (method) {
+      setLastLoginMethod(method)
+    }
+  }, [])
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -34,6 +43,7 @@ export default function Login() {
       if (error) {
         throw error
       }
+      localStorage.setItem('lastLoginMethod', 'email')
     } catch (error: any) {
       toast.error(
         error.message || 'Erro ao fazer login. Verifique suas credenciais.',
@@ -45,6 +55,7 @@ export default function Login() {
 
   const handleGoogleLogin = async () => {
     try {
+      localStorage.setItem('lastLoginMethod', 'google')
       const { error } = await signInWithGoogle()
       if (error) throw error
     } catch (error: any) {
@@ -74,11 +85,19 @@ export default function Login() {
             </p>
           </div>
 
-          <div className="mb-6">
+          <div className="mb-6 relative">
+            {lastLoginMethod === 'google' && (
+              <Badge
+                variant="secondary"
+                className="absolute -top-3 right-4 bg-blue-100 text-blue-700 hover:bg-blue-100 border border-blue-200 shadow-sm text-[10px] px-2 py-0.5 z-10 pointer-events-none"
+              >
+                Último acesso
+              </Badge>
+            )}
             <Button
               type="button"
               variant="outline"
-              className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-200"
+              className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 relative"
               onClick={handleGoogleLogin}
               disabled={loading}
             >
@@ -170,16 +189,30 @@ export default function Login() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Entrando...
-                </>
-              ) : (
-                'Entrar'
+            <div className="relative mt-2">
+              {lastLoginMethod === 'email' && (
+                <Badge
+                  variant="secondary"
+                  className="absolute -top-3 right-4 bg-blue-100 text-blue-700 hover:bg-blue-100 border border-blue-200 shadow-sm text-[10px] px-2 py-0.5 z-10 pointer-events-none"
+                >
+                  Último acesso
+                </Badge>
               )}
-            </Button>
+              <Button
+                type="submit"
+                className="w-full relative"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Entrando...
+                  </>
+                ) : (
+                  'Entrar'
+                )}
+              </Button>
+            </div>
           </form>
 
           <div className="mt-8 text-center text-sm text-gray-500">
