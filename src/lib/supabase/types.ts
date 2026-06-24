@@ -1223,6 +1223,23 @@ export type Database = {
         }[]
       }
       get_admin_dashboard_stats: { Args: never; Returns: Json }
+      get_admin_financial_customers: {
+        Args: never
+        Returns: {
+          cnpj_ou_cpf: string
+          created_at: string
+          current_period_end: string
+          email: string
+          full_name: string
+          last_sign_in_at: string
+          metodo_pagamento: string
+          organization_id: string
+          plan: string
+          plan_status: string
+          profile_id: string
+          telefone: string
+        }[]
+      }
       get_all_users_for_admin: {
         Args: never
         Returns: {
