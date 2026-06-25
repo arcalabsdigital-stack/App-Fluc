@@ -28,6 +28,7 @@ import Accounts from './pages/Accounts'
 import Planejamento from './pages/Planejamento'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
+import Landing from './pages/Landing'
 import { TransactionProvider } from '@/stores/useTransactionStore'
 import { AuthProvider } from '@/hooks/use-auth'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -46,10 +47,11 @@ const App = () => (
             <Route path="/signup" element={<SignUp />} />
             <Route path="/termos" element={<Terms />} />
             <Route path="/privacidade" element={<Privacy />} />
+            <Route path="/" element={<Landing />} />
 
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
-                <Route path="/" element={<Index />} />
+                <Route path="/dashboard" element={<Index />} />
                 <Route path="/diagnostico" element={<Diagnostico />} />
                 <Route path="/accounts" element={<Accounts />} />
                 <Route path="/payments" element={<Payments />} />
