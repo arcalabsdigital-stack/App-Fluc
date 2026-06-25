@@ -26,6 +26,8 @@ import AdminStaff from './pages/admin/Staff'
 import AdminFinancial from './pages/admin/Financial'
 import Accounts from './pages/Accounts'
 import Planejamento from './pages/Planejamento'
+import Terms from './pages/Terms'
+import Privacy from './pages/Privacy'
 import { TransactionProvider } from '@/stores/useTransactionStore'
 import { AuthProvider } from '@/hooks/use-auth'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -42,6 +44,8 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
+            <Route path="/termos" element={<Terms />} />
+            <Route path="/privacidade" element={<Privacy />} />
 
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
