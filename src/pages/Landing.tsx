@@ -9,7 +9,6 @@ import {
   TrendingUp,
   Repeat,
   ArrowRight,
-  BarChart3,
 } from 'lucide-react'
 
 export default function Landing() {
@@ -33,8 +32,8 @@ export default function Landing() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="bg-primary text-primary-foreground p-1.5 rounded-lg">
-              <BarChart3 className="h-6 w-6" />
+            <div className="bg-slate-900 text-white w-8 h-8 flex items-center justify-center rounded-lg font-bold text-lg">
+              F
             </div>
             <span className="text-xl font-bold tracking-tight">
               Fluc Gestão Financeira
@@ -196,8 +195,8 @@ export default function Landing() {
       <footer className="border-t py-10 bg-muted/20">
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6 text-sm text-muted-foreground">
           <div className="flex items-center gap-2 font-medium text-foreground">
-            <div className="bg-primary/10 text-primary p-1 rounded">
-              <BarChart3 className="h-4 w-4" />
+            <div className="bg-slate-900 text-white w-6 h-6 flex items-center justify-center rounded text-xs font-bold">
+              F
             </div>
             Fluc Gestão Financeira
           </div>
