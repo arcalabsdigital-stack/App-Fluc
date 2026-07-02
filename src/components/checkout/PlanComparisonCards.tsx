@@ -5,116 +5,119 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Check } from 'lucide-react'
 
-interface PlanData {
-  id: string
-  name: string
-  priceMensal: number
-  priceAnual: number
-  features: string[]
-}
-
 interface PlanComparisonCardsProps {
-  plan: PlanData
-  onSelect: (billingPeriod: 'mensal' | 'anual') => void
+  onSelect: (plan: 'mensal' | 'anual') => void
 }
 
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-    value,
-  )
+const monthlyBenefits = [
+  'Acesso completo ao Fluc',
+  'Dashboard financeiro',
+  'Transações ilimitadas',
+  'Conciliação bancária',
+  'DRE e Valuation',
+  'Suporte por e-mail',
+]
 
-export function PlanComparisonCards({
-  plan,
-  onSelect,
-}: PlanComparisonCardsProps) {
-  const annualMonthlyEquivalent = plan.priceAnual / 12
-  const annualSavings = plan.priceMensal * 12 - plan.priceAnual
-  const savingsPercent = Math.round(
-    (annualSavings / (plan.priceMensal * 12)) * 100,
-  )
+const annualBenefits = [
+  'Acesso completo ao Fluc',
+  'Dashboard financeiro',
+  'Transações ilimitadas',
+  'Conciliação bancária',
+  'DRE e Valuation',
+  'Suporte por e-mail',
+  'Suporte prioritário',
+  '2 meses grátis',
+]
 
+function BenefitsList({ benefits }: { benefits: string[] }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-      <Card className="flex flex-col border-slate-200 transition-all duration-300 hover:shadow-md">
+    <ul className="space-y-3">
+      {benefits.map((benefit, i) => (
+        <li key={i} className="flex items-start">
+          <div className="flex items-center justify-center w-5 h-5 rounded-full bg-green-100 shrink-0 mr-3 mt-0.5">
+            <Check className="h-3.5 w-3.5 text-green-600" />
+          </div>
+          <span className="text-slate-700 text-sm">{benefit}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+export function PlanComparisonCards({ onSelect }: PlanComparisonCardsProps) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto items-stretch">
+      <Card className="flex flex-col shadow-lg transition-all duration-300 hover:shadow-xl">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">Mensal</CardTitle>
-          <CardDescription>Cobrança mensal recorrente</CardDescription>
+          <CardTitle className="text-2xl font-bold text-slate-900">
+            Plano Mensal
+          </CardTitle>
         </CardHeader>
         <CardContent className="flex-1 space-y-6">
-          <div className="space-y-1">
-            <div className="flex items-baseline text-4xl font-extrabold">
-              {formatCurrency(plan.priceMensal)}
+          <div>
+            <div className="flex items-baseline text-4xl font-extrabold text-slate-900">
+              R$ 49,90
               <span className="text-xl font-medium text-slate-500 ml-1">
                 /mês
               </span>
             </div>
+            <p className="text-sm text-slate-500 mt-2 font-medium">
+              Cancele quando quiser
+            </p>
           </div>
-          <ul className="space-y-3">
-            {plan.features.map((feature, i) => (
-              <li key={i} className="flex items-start">
-                <Check className="h-5 w-5 text-green-500 shrink-0 mr-2" />
-                <span className="text-slate-700">{feature}</span>
-              </li>
-            ))}
-          </ul>
+          <BenefitsList benefits={monthlyBenefits} />
         </CardContent>
         <CardFooter>
           <Button
-            className="w-full h-11 text-base font-semibold bg-white text-slate-900 border-2 border-slate-200 hover:bg-slate-50"
+            className="w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
             onClick={() => onSelect('mensal')}
           >
-            Selecionar
+            Assinar Mensal
           </Button>
         </CardFooter>
       </Card>
 
-      <Card className="flex flex-col border-2 border-slate-900 shadow-lg relative transition-all duration-300 hover:shadow-xl md:scale-105">
-        <div className="absolute -top-4 left-0 right-0 flex justify-center">
-          <Badge className="bg-slate-900 text-white hover:bg-slate-800 uppercase tracking-wide text-xs font-bold py-1 px-3">
-            Mais Popular
+      <Card className="flex flex-col border-2 border-blue-600 shadow-xl relative transition-all duration-300 hover:shadow-2xl md:scale-[1.03]">
+        <div className="absolute -top-3 left-0 right-0 flex justify-center">
+          <Badge className="bg-blue-600 text-white hover:bg-blue-700 uppercase tracking-wide text-xs font-bold py-1.5 px-4 shadow-md">
+            Economize 40%
           </Badge>
         </div>
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">Anual</CardTitle>
-          <CardDescription>Cobrança anual com economia</CardDescription>
+          <CardTitle className="text-2xl font-bold text-slate-900">
+            Plano Anual
+          </CardTitle>
         </CardHeader>
         <CardContent className="flex-1 space-y-6">
-          <div className="space-y-1">
-            <div className="flex items-baseline text-4xl font-extrabold">
-              {formatCurrency(plan.priceAnual)}
+          <div>
+            <div className="flex items-baseline text-4xl font-extrabold text-slate-900">
+              R$ 29,90
               <span className="text-xl font-medium text-slate-500 ml-1">
-                /ano
+                /mês
               </span>
             </div>
-            <p className="text-sm text-slate-500 font-medium">
-              Equivalente a {formatCurrency(annualMonthlyEquivalent)}/mês
+            <p className="text-sm text-slate-500 mt-2">
+              Equivalente a R$ 358,80/ano
             </p>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none font-bold text-sm">
-                Economize {formatCurrency(annualSavings)} ({savingsPercent}%)
-              </Badge>
-            </div>
+            <p className="text-sm text-green-600 font-bold mt-1">
+              Economia de R$ 240/ano
+            </p>
+            <p className="text-sm text-slate-500 mt-2 font-medium">
+              Cancele quando quiser
+            </p>
           </div>
-          <ul className="space-y-3">
-            {plan.features.map((feature, i) => (
-              <li key={i} className="flex items-start">
-                <Check className="h-5 w-5 text-green-500 shrink-0 mr-2" />
-                <span className="text-slate-700">{feature}</span>
-              </li>
-            ))}
-          </ul>
+          <BenefitsList benefits={annualBenefits} />
         </CardContent>
         <CardFooter>
           <Button
-            className="w-full h-11 text-base font-semibold bg-slate-900 hover:bg-slate-800 text-white"
+            className="w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md"
             onClick={() => onSelect('anual')}
           >
-            Selecionar
+            Assinar Anual
           </Button>
         </CardFooter>
       </Card>
