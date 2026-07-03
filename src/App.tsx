@@ -28,7 +28,7 @@ import Accounts from './pages/Accounts'
 import Planejamento from './pages/Planejamento'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
-import Landing from './pages/Landing'
+import { Navigate } from 'react-router-dom'
 import { TransactionProvider } from '@/stores/useTransactionStore'
 import { AuthProvider } from '@/hooks/use-auth'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -47,7 +47,7 @@ const App = () => (
             <Route path="/signup" element={<SignUp />} />
             <Route path="/termos" element={<Terms />} />
             <Route path="/privacidade" element={<Privacy />} />
-            <Route path="/" element={<Landing />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
 
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
