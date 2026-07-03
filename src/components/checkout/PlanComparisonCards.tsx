@@ -65,9 +65,6 @@ export function PlanComparisonCards({ onSelect }: PlanComparisonCardsProps) {
                 /mês
               </span>
             </div>
-            <p className="text-sm text-slate-500 mt-2 font-medium">
-              Cancele quando quiser
-            </p>
           </div>
           <BenefitsList benefits={monthlyBenefits} />
         </CardContent>
@@ -84,7 +81,7 @@ export function PlanComparisonCards({ onSelect }: PlanComparisonCardsProps) {
       <Card className="flex flex-col border-2 border-blue-600 shadow-xl relative transition-all duration-300 hover:shadow-2xl md:scale-[1.03]">
         <div className="absolute -top-3 left-0 right-0 flex justify-center">
           <Badge className="bg-blue-600 text-white hover:bg-blue-700 uppercase tracking-wide text-xs font-bold py-1.5 px-4 shadow-md">
-            Economize 40%
+            MAIS POPULAR
           </Badge>
         </div>
         <CardHeader>
@@ -105,9 +102,6 @@ export function PlanComparisonCards({ onSelect }: PlanComparisonCardsProps) {
             </p>
             <p className="text-sm text-green-600 font-bold mt-1">
               Economia de R$ 240/ano
-            </p>
-            <p className="text-sm text-slate-500 mt-2 font-medium">
-              Cancele quando quiser
             </p>
           </div>
           <BenefitsList benefits={annualBenefits} />
