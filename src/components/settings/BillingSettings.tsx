@@ -67,7 +67,7 @@ export function BillingSettings() {
               </p>
               <div className="flex items-center gap-3">
                 <span className="text-2xl font-bold text-gray-900">
-                  {subscription?.plan || 'Fluxo'}
+                  {subscription?.plan || 'Mensal'}
                 </span>
                 <Badge
                   variant={isExpired ? 'destructive' : 'default'}

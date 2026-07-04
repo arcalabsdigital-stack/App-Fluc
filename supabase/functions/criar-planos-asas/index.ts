@@ -1,12 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
-}
+import { corsHeaders } from '../_shared/cors.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -55,22 +49,16 @@ Deno.serve(async (req) => {
 
     const plansPayloads = [
       {
-        name: 'Fluxo',
-        description: 'Ideal para começar',
+        name: 'Mensal',
+        description: 'Plano mensal completo',
         amount: 49.9,
-        interval: 'MENSAL',
+        interval: 'MONTHLY',
       },
       {
-        name: 'Lucro',
-        description: 'Mais popular',
-        amount: 89.9,
-        interval: 'MENSAL',
-      },
-      {
-        name: 'Patrimônio',
-        description: 'Para empresas em crescimento',
-        amount: 199.9,
-        interval: 'MENSAL',
+        name: 'Anual',
+        description: 'Plano anual com 2 meses grátis',
+        amount: 358.8,
+        interval: 'YEARLY',
       },
     ]
 
@@ -104,31 +92,36 @@ Deno.serve(async (req) => {
     const asaasResponses = await Promise.all(asaasRequests)
 
     const featuresMap: Record<string, any> = {
-      Fluxo: { transactions_limit: 100, categories_limit: 5, users_limit: 1 },
-      Lucro: {
+      Mensal: {
         transactions_limit: 'unlimited',
         categories_limit: 'unlimited',
-        users_limit: 3,
-        dre: 'simplificado',
+        users_limit: 1,
+        support: 'email',
       },
-      Patrimônio: {
+      Anual: {
+        transactions_limit: 'unlimited',
+        categories_limit: 'unlimited',
         users_limit: 'unlimited',
         dre: 'completo',
         valuation: true,
-        support: 'VIP',
+        support: 'priority',
       },
     }
 
     const updatePromises = asaasResponses.map((asaasPlan: any, index) => {
       const planName = plansPayloads[index].name
+      const planAmount = plansPayloads[index].amount
+      const isAnnual = plansPayloads[index].interval === 'YEARLY'
+
       return supabaseAdmin.from('plans').upsert(
         {
           name: planName,
           asaas_plan_id: asaasPlan.id,
-          price: plansPayloads[index].amount,
+          price: isAnnual ? planAmount / 12 : planAmount,
+          price_mensal: isAnnual ? planAmount / 12 : planAmount,
+          price_anual: isAnnual ? planAmount : null,
           features: featuresMap[planName],
-          billing_period:
-            plansPayloads[index].interval === 'MENSAL' ? 'mensal' : 'anual',
+          billing_period: isAnnual ? 'anual' : 'mensal',
         },
         { onConflict: 'name' },
       )

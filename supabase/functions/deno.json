@@ -4,10 +4,10 @@
     "welcome-email": 17,
     "invite-user": 21,
     "asaas-webhook": 9,
-    "create-checkout": 13,
-    "check-subscriptions": 7,
+    "create-checkout": 14,
+    "check-subscriptions": 8,
     "validar-cupom": 8,
     "verificar-email": 6,
-    "criar-planos-asas": 7
+    "criar-planos-asas": 8
   }
 }
