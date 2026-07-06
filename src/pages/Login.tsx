@@ -28,7 +28,7 @@ export default function Login() {
 
   useEffect(() => {
     if (user) {
-      const from = location.state?.from?.pathname || '/settings'
+      const from = location.state?.from?.pathname || '/'
       navigate(from, { replace: true })
     }
   }, [user, navigate, location])

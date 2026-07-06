@@ -98,14 +98,6 @@ export const ProtectedRoute = () => {
     return <Navigate to="/" replace />
   }
 
-  if (
-    profile?.must_change_password &&
-    location.pathname !== '/settings' &&
-    location.pathname !== '/onboarding'
-  ) {
-    return <Navigate to="/settings" replace />
-  }
-
   if (subscription) {
     const isExpired =
       subscription.status === 'canceled' ||

@@ -112,7 +112,7 @@ export const useDiagnostico = (selectedDate: Date) => {
           hasProjetado,
           score,
           gap,
-          realizadoReceitas,
+          realizadoReceitas: realizedReceitas,
           totalPlanejadoReceitas: planejadoReceitas,
           realizadoDespesas: realizedDespesas,
           totalPlanejadoDespesas: planejadoDespesas,
