@@ -307,7 +307,7 @@ export function TourOverlay() {
           return prev
         })
       } else {
-        setTargetRect(null)
+        setTargetRect((prev) => (prev !== null ? null : prev))
       }
     }
 

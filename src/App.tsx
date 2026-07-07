@@ -28,10 +28,17 @@ import Accounts from './pages/Accounts'
 import Planejamento from './pages/Planejamento'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { TransactionProvider } from '@/stores/useTransactionStore'
 import { AuthProvider } from '@/hooks/use-auth'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+
+const RootRedirect = () => {
+  const location = useLocation()
+  return (
+    <Navigate to={`/dashboard${location.search}${location.hash}`} replace />
+  )
+}
 
 const App = () => (
   <BrowserRouter
@@ -47,7 +54,7 @@ const App = () => (
             <Route path="/signup" element={<SignUp />} />
             <Route path="/termos" element={<Terms />} />
             <Route path="/privacidade" element={<Privacy />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<RootRedirect />} />
 
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>

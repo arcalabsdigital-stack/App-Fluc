@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useRef,
   ReactNode,
 } from 'react'
 import { User, Session } from '@supabase/supabase-js'
@@ -83,7 +84,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const isProfileLoading = useRef(false)
+
   const loadProfile = async (userId: string, retryCount = 0): Promise<void> => {
+    isProfileLoading.current = true
     try {
       const { data: profileData, error } = await supabase
         .from('profiles')
@@ -150,17 +154,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await new Promise((resolve) => setTimeout(resolve, delay))
         return loadProfile(userId, retryCount + 1)
       }
+    } finally {
+      isProfileLoading.current = false
     }
   }
 
   useEffect(() => {
+    let mounted = true
+
     const {
       data: { subscription: authSub },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        loadProfile(session.user.id).finally(() => setLoading(false))
+        if (!isProfileLoading.current) {
+          loadProfile(session.user.id).finally(() => {
+            if (mounted) setLoading(false)
+          })
+        }
       } else {
         setProfile(null)
         setRole(null)
@@ -172,16 +185,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     })
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        loadProfile(session.user.id).finally(() => setLoading(false))
+        if (!isProfileLoading.current) {
+          loadProfile(session.user.id).finally(() => {
+            if (mounted) setLoading(false)
+          })
+        }
       } else {
         setLoading(false)
       }
     })
 
-    return () => authSub.unsubscribe()
+    return () => {
+      mounted = false
+      if (authSub && typeof authSub.unsubscribe === 'function') {
+        authSub.unsubscribe()
+      }
+    }
   }, [])
 
   const switchWorkspace = async (orgId: string) => {

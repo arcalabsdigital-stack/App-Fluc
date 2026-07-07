@@ -1,4 +1,3 @@
-/* Use Mobile Hook - A hook that checks if the screen is mobile - from shadcn/ui (exposes useIsMobile) */
 import * as React from 'react'
 
 const MOBILE_BREAKPOINT = 768
@@ -11,9 +10,24 @@ export function useIsMobile() {
     const onChange = () => {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     }
-    mql.addEventListener('change', onChange)
+
+    if (mql.addEventListener) {
+      mql.addEventListener('change', onChange)
+    } else if (typeof mql.addListener === 'function') {
+      // @ts-expect-error
+      mql.addListener(onChange)
+    }
+
     setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    return () => mql.removeEventListener('change', onChange)
+
+    return () => {
+      if (mql.removeEventListener) {
+        mql.removeEventListener('change', onChange)
+      } else if (typeof mql.removeListener === 'function') {
+        // @ts-expect-error
+        mql.removeListener(onChange)
+      }
+    }
   }, [])
 
   return !!isMobile
