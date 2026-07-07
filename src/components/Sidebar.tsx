@@ -214,8 +214,8 @@ export function Sidebar({
               id="sidebar-item-Início"
               icon={LayoutDashboard}
               label="Início"
-              to="/"
-              isActive={pathname === '/'}
+              to="/dashboard"
+              isActive={pathname === '/dashboard' || pathname === '/'}
               onClick={onNavigate}
             />
             <SidebarItem

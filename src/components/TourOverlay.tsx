@@ -13,28 +13,28 @@ const allTourSteps = [
     title: 'Visão Geral: Seus Saldos',
     content:
       'Estes são seus 3 saldos. Conciliado é o que bate com o banco. Realizado é o que já entrou ou saiu. Projetado é o futuro previsto. Eles formam a base do seu controle.',
-    path: '/',
+    path: '/dashboard',
   },
   {
     target: 'upcoming-transactions',
     title: 'Visão Geral: Próximos Lançamentos',
     content:
       'Aqui aparecem as contas que vencem em breve. O laranja indica vencidos. Clique em qualquer item para conciliar ou pagar.',
-    path: '/',
+    path: '/dashboard',
   },
   {
     target: 'unified-cash-position',
     title: 'Visão Geral: Projeção de Caixa',
     content:
       'Sua projeção de caixa mostra se você terá dinheiro sobrando ou faltando em cada período. Verde é positivo, vermelho é negativo.',
-    path: '/',
+    path: '/dashboard',
   },
   {
     target: 'sidebar-item-Diagnostico',
     title: 'Menu: Meu Diagnóstico',
     content:
       'Acesse seu painel de saúde financeira. O Score e o GAP mostram se você está no controle ou precisa de ação.',
-    path: '/',
+    path: '/dashboard',
   },
   {
     target: 'diagnostico-score-gap',
@@ -267,7 +267,8 @@ export function TourOverlay() {
 
     if (location.pathname !== currentStep.path) {
       setIsReady(false)
-      setTimeout(() => navigate(currentStep.path), 300)
+      const handler = setTimeout(() => navigate(currentStep.path), 300)
+      return () => clearTimeout(handler)
     } else {
       setIsReady(true)
     }

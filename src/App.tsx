@@ -47,7 +47,7 @@ const App = () => (
             <Route path="/signup" element={<SignUp />} />
             <Route path="/termos" element={<Terms />} />
             <Route path="/privacidade" element={<Privacy />} />
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
