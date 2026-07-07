@@ -35,14 +35,17 @@ import { useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import { SimulacaoModal } from '@/components/SimulacaoModal'
 import { PlayCircle } from 'lucide-react'
+import { useTourStore } from '@/stores/useTourStore'
 
 export default function Diagnostico() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [isSimulacaoOpen, setIsSimulacaoOpen] = useState(false)
   const { loading, metrics } = useDiagnostico(selectedDate)
   const navigate = useNavigate()
+  const { isActive: isTourActive } = useTourStore()
 
   useEffect(() => {
+    if (isTourActive) return
     if (!loading && !metrics.hasProjetado) {
       const isCurrentMonth =
         selectedDate.getMonth() === new Date().getMonth() &&
@@ -55,7 +58,7 @@ export default function Diagnostico() {
         )
       }
     }
-  }, [loading, metrics.hasProjetado, selectedDate, navigate])
+  }, [loading, metrics.hasProjetado, selectedDate, navigate, isTourActive])
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTourStore } from '@/stores/useTourStore'
 import { Button } from '@/components/ui/button'
@@ -237,6 +237,19 @@ export function TourOverlay() {
     })
   }, [role])
 
+  const handleEnd = useCallback(async () => {
+    endTour()
+    if (user && profile && !profile.onboarding_completed) {
+      await supabase
+        .from('profiles')
+        .update({ onboarding_completed: true })
+        .eq('id', user.id)
+      if (updateProfileContext) {
+        updateProfileContext({ onboarding_completed: true })
+      }
+    }
+  }, [endTour, user, profile])
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     handleResize()
@@ -258,7 +271,7 @@ export function TourOverlay() {
     } else {
       setIsReady(true)
     }
-  }, [isActive, step, location.pathname, navigate, tourSteps])
+  }, [isActive, step, location.pathname, navigate, tourSteps, handleEnd])
 
   useEffect(() => {
     if (!isActive || isMobile || !isReady) return
@@ -312,19 +325,6 @@ export function TourOverlay() {
 
   const currentStep = tourSteps[step]
   if (!currentStep) return null
-
-  const handleEnd = async () => {
-    endTour()
-    if (user && profile && !profile.onboarding_completed) {
-      await supabase
-        .from('profiles')
-        .update({ onboarding_completed: true })
-        .eq('id', user.id)
-      if (updateProfileContext) {
-        updateProfileContext({ onboarding_completed: true })
-      }
-    }
-  }
 
   const handleNext = () => {
     if (step < tourSteps.length - 1) {

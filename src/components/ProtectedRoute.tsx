@@ -14,6 +14,7 @@ export const ProtectedRoute = () => {
         subscription.status === 'canceled' ||
         subscription.status === 'past_due' ||
         (subscription.status === 'trial' &&
+          !!subscription.trial_end &&
           new Date(subscription.trial_end) < new Date())
 
       if (
@@ -103,6 +104,7 @@ export const ProtectedRoute = () => {
       subscription.status === 'canceled' ||
       subscription.status === 'past_due' ||
       (subscription.status === 'trial' &&
+        !!subscription.trial_end &&
         new Date(subscription.trial_end) < new Date())
     if (
       isExpired &&

@@ -3,7 +3,7 @@ import { startOfMonth, endOfMonth } from 'date-fns'
 import { dashboardService } from '@/services/dashboardService'
 import { projectionsService } from '@/services/projectionsService'
 import { planningService } from '@/services/planningService'
-import { useAuth } from './use-auth'
+import { useAuth } from '@/hooks/use-auth'
 
 export const useDiagnostico = (selectedDate: Date) => {
   const [loading, setLoading] = useState(true)
@@ -47,40 +47,45 @@ export const useDiagnostico = (selectedDate: Date) => {
         ])
 
         const realizedReceitas = transactions
-          .filter(
-            (t) =>
-              (t.type === 'Receita' || (t as any).tipo_id === 'Receita') &&
-              (t.status === 'pago' || t.status === 'parcial'),
-          )
-          .reduce((acc, t) => acc + (t.amount_paid || 0), 0)
+          ? transactions
+              .filter(
+                (t) =>
+                  (t.type === 'Receita' || (t as any).tipo_id === 'Receita') &&
+                  (t.status === 'pago' || t.status === 'parcial'),
+              )
+              .reduce((acc, t) => acc + (t.amount_paid || 0), 0)
+          : 0
 
         const realizedDespesas = transactions
-          .filter(
-            (t) =>
-              (t.type === 'Despesa' || (t as any).tipo_id === 'Despesa') &&
-              (t.status === 'pago' || t.status === 'parcial'),
-          )
-          .reduce((acc, t) => acc + (t.amount_paid || 0), 0)
+          ? transactions
+              .filter(
+                (t) =>
+                  (t.type === 'Despesa' || (t as any).tipo_id === 'Despesa') &&
+                  (t.status === 'pago' || t.status === 'parcial'),
+              )
+              .reduce((acc, t) => acc + (t.amount_paid || 0), 0)
+          : 0
 
         const planejadoReceitas =
-          projections.length > 0
+          projections && projections.length > 0
             ? projections
                 .filter((p) => p.type === 'Receita')
-                .reduce((acc, p) => acc + p.planned_amount, 0)
+                .reduce((acc, p) => acc + (p.planned_amount || 0), 0)
             : summary
-              ? summary.total_revenue
+              ? summary.total_revenue || 0
               : 0
 
         const planejadoDespesas =
-          projections.length > 0
+          projections && projections.length > 0
             ? projections
                 .filter((p) => p.type === 'Despesa')
-                .reduce((acc, p) => acc + p.planned_amount, 0)
+                .reduce((acc, p) => acc + (p.planned_amount || 0), 0)
             : summary
-              ? summary.total_expenses
+              ? summary.total_expenses || 0
               : 0
 
-        const hasProjetado = projections.length > 0 || !!summary
+        const hasProjetado =
+          (projections && projections.length > 0) || !!summary
 
         const realizadoNet = realizedReceitas - realizedDespesas
         const planejadoNet = planejadoReceitas - planejadoDespesas
@@ -128,7 +133,7 @@ export const useDiagnostico = (selectedDate: Date) => {
     }
 
     fetchData()
-  }, [selectedDate, role, currentWorkspace, authLoading])
+  }, [selectedDate, role, currentWorkspace?.id, authLoading])
 
   return { loading, metrics }
 }
