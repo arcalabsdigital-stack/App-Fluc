@@ -153,6 +153,7 @@ export function TransactionForm({
 }: TransactionFormProps) {
   const {
     categories,
+    categoriesLoading,
     categoriasSimplificadas,
     dicas,
     dicasLidas,
@@ -763,50 +764,66 @@ export function TransactionForm({
                           onValueChange={field.onChange}
                           defaultValue={field.value}
                           value={field.value}
+                          disabled={categoriesLoading}
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Selecione..." />
+                              <SelectValue
+                                placeholder={
+                                  categoriesLoading
+                                    ? 'Carregando categorias...'
+                                    : 'Selecione...'
+                                }
+                              />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {uniqueGroups.map((grupo) => {
-                              const catsInGroup = categories.filter(
-                                (c) => c.grupo === grupo,
-                              )
-                              if (catsInGroup.length === 0) return null
-                              return (
-                                <SelectGroup key={grupo}>
-                                  <SelectLabel className="bg-gray-50 uppercase text-xs font-bold">
-                                    {grupo}
-                                  </SelectLabel>
-                                  {catsInGroup.map((category) => (
-                                    <SelectItem
-                                      key={category.id}
-                                      value={category.id}
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        {category.nome}
-                                      </div>
-                                    </SelectItem>
-                                  ))}
+                            {categoriesLoading ? (
+                              <div className="flex items-center justify-center p-4 text-sm text-muted-foreground gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span>Carregando categorias...</span>
+                              </div>
+                            ) : (
+                              <>
+                                {uniqueGroups.map((grupo) => {
+                                  const catsInGroup = categories.filter(
+                                    (c) => c.grupo === grupo,
+                                  )
+                                  if (catsInGroup.length === 0) return null
+                                  return (
+                                    <SelectGroup key={grupo}>
+                                      <SelectLabel className="bg-gray-50 uppercase text-xs font-bold">
+                                        {grupo}
+                                      </SelectLabel>
+                                      {catsInGroup.map((category) => (
+                                        <SelectItem
+                                          key={category.id}
+                                          value={category.id}
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            {category.nome}
+                                          </div>
+                                        </SelectItem>
+                                      ))}
+                                    </SelectGroup>
+                                  )
+                                })}
+                                <SelectGroup>
+                                  <Button
+                                    variant="ghost"
+                                    className="w-full justify-start font-normal text-primary hover:text-primary mt-2"
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                      setShowCustomCatDialog(true)
+                                    }}
+                                  >
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Criar nova categoria
+                                  </Button>
                                 </SelectGroup>
-                              )
-                            })}
-                            <SelectGroup>
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start font-normal text-primary hover:text-primary mt-2"
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  setShowCustomCatDialog(true)
-                                }}
-                              >
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Criar nova categoria
-                              </Button>
-                            </SelectGroup>
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />

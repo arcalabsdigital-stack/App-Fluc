@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2, Lock, Tag, AlertCircle } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -259,6 +260,7 @@ function normalizeString(str: string) {
 }
 
 export default function Categories() {
+  const { session, profile } = useAuth()
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -284,15 +286,17 @@ export default function Categories() {
   const [fallbackCategory, setFallbackCategory] = useState('')
 
   useEffect(() => {
+    if (!session || !profile?.organization_id) return
     loadCategories()
-  }, [])
+  }, [session, profile?.organization_id])
 
   const loadCategories = async () => {
     try {
       setLoading(true)
       const data = await categoryService.fetchCategories()
       setCategories(data)
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Erro ao carregar categorias:', error?.message || error)
       toast.error('Erro ao carregar categorias')
     } finally {
       setLoading(false)

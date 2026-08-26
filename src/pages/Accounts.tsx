@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { accountService } from '@/services/accountService'
+import { useAuth } from '@/hooks/use-auth'
 import { Conta } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,6 +24,7 @@ import { PlusCircle, Wallet, Edit, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default function AccountsPage() {
+  const { session, profile } = useAuth()
   const [accounts, setAccounts] = useState<Conta[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -38,9 +40,11 @@ export default function AccountsPage() {
 
   const fetchAccounts = async () => {
     try {
+      setLoading(true)
       const data = await accountService.getAccounts()
       setAccounts(data)
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Erro ao buscar contas:', error?.message || error)
       toast.error('Erro ao buscar contas')
     } finally {
       setLoading(false)
@@ -48,8 +52,9 @@ export default function AccountsPage() {
   }
 
   useEffect(() => {
+    if (!session || !profile?.organization_id) return
     fetchAccounts()
-  }, [])
+  }, [session, profile?.organization_id])
 
   const handleOpenDialog = (account?: Conta) => {
     if (account) {

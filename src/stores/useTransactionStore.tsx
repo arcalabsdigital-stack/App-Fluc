@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase/client'
 import { transactionService } from '@/services/transactionService'
 import { ReactNode, useEffect } from 'react'
 import { FilterState } from '@/components/transactions/TransactionFilters'
+import { useAuth } from '@/hooks/use-auth'
 
 import { CategoriaSimplificada, DicaContextual } from '@/lib/types'
 
@@ -14,6 +15,7 @@ interface TransactionStore {
   dicas: DicaContextual[]
   dicasLidas: string[]
   isLoading: boolean
+  categoriesLoading: boolean
   fetchCategories: () => Promise<void>
   fetchTransactions: (filters: FilterState, role: string) => Promise<void>
   addTransaction: (t: Omit<Transacao, 'id'>) => Promise<void>
@@ -48,28 +50,57 @@ const useTransactionStore = create<TransactionStore>((set, get) => ({
   dicas: [],
   dicasLidas: [],
   isLoading: false,
+  categoriesLoading: false,
   fetchCategories: async () => {
-    const [
-      { data: categories },
-      { data: catSimp },
-      { data: dicas },
-      { data: lidas },
-    ] = await Promise.all([
-      supabase.from('categories').select('*').order('grupo').order('nome'),
-      supabase
-        .from('categoria_simplificada')
-        .select('*')
-        .order('nome_simplificado'),
-      supabase.from('dicas_contextuais').select('*'),
-      supabase.from('dicas_lidas').select('dica_id'),
-    ])
+    set({ categoriesLoading: true })
+    try {
+      const [
+        { data: categories, error: catError },
+        { data: catSimp, error: catSimpError },
+        { data: dicas, error: dicasError },
+        { data: lidas, error: lidasError },
+      ] = await Promise.all([
+        supabase.from('categories').select('*').order('grupo').order('nome'),
+        supabase
+          .from('categoria_simplificada')
+          .select('*')
+          .order('nome_simplificado'),
+        supabase.from('dicas_contextuais').select('*'),
+        supabase.from('dicas_lidas').select('dica_id'),
+      ])
 
-    set({
-      categories: (categories || []) as Categoria[],
-      categoriasSimplificadas: (catSimp || []) as CategoriaSimplificada[],
-      dicas: (dicas || []) as DicaContextual[],
-      dicasLidas: (lidas || []).map((l) => l.dica_id),
-    })
+      if (catError)
+        console.error(
+          'Erro ao buscar categorias:',
+          catError.message || catError,
+        )
+      if (catSimpError)
+        console.error(
+          'Erro ao buscar categorias simplificadas:',
+          catSimpError.message || catSimpError,
+        )
+      if (dicasError)
+        console.error(
+          'Erro ao buscar dicas contextuais:',
+          dicasError.message || dicasError,
+        )
+      if (lidasError)
+        console.error(
+          'Erro ao buscar dicas lidas:',
+          lidasError.message || lidasError,
+        )
+
+      set({
+        categories: (categories || []) as Categoria[],
+        categoriasSimplificadas: (catSimp || []) as CategoriaSimplificada[],
+        dicas: (dicas || []) as DicaContextual[],
+        dicasLidas: (lidas || []).map((l) => l.dica_id),
+      })
+    } catch (error: any) {
+      console.error('Erro ao buscar categorias:', error?.message || error)
+    } finally {
+      set({ categoriesLoading: false })
+    }
   },
   addCategory: async (cat) => {
     const { data: orgIdRes } = await supabase.rpc('get_current_user_org_id')
@@ -177,9 +208,13 @@ const useTransactionStore = create<TransactionStore>((set, get) => ({
 }))
 
 export function TransactionProvider({ children }: { children: ReactNode }) {
+  const { session, profile } = useAuth()
+
   useEffect(() => {
+    if (!session || !profile?.organization_id) return
     useTransactionStore.getState().fetchCategories()
-  }, [])
+  }, [session, profile?.organization_id])
+
   return <>{children}</>
 }
 
