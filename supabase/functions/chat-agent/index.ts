@@ -2,29 +2,33 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
+const N8N_WEBHOOK_URL = Deno.env.get('N8N_WEBHOOK_URL') ?? ''
+const N8N_WEBHOOK_SECRET = Deno.env.get('N8N_WEBHOOK_SECRET') ?? ''
+const TIMEOUT_MS = 60_000
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+
 Deno.serve(async (req) => {
-  // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const N8N_WEBHOOK_URL =
-      'https://workflow.usecurling.com/webhook/48e00752-dca4-47a9-b0ec-a0c6a1212776'
-
-    // Validate JWT and get user
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing Authorization header' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      )
+    if (!N8N_WEBHOOK_URL || !N8N_WEBHOOK_SECRET) {
+      console.error('N8N_WEBHOOK_URL ou N8N_WEBHOOK_SECRET não configurados')
+      return json({ error: 'Serviço indisponível no momento.' }, 503)
     }
 
-    const supabaseClient = createClient(
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return json({ error: 'Não autenticado.' }, 401)
+    }
+
+    const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } },
@@ -33,65 +37,72 @@ Deno.serve(async (req) => {
     const {
       data: { user },
       error: userError,
-    } = await supabaseClient.auth.getUser()
+    } = await supabase.auth.getUser()
 
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return json({ error: 'Não autenticado.' }, 401)
     }
 
-    // Parse request body
-    const { message } = await req.json()
+    const body = await req.json().catch(() => null)
+    const message = body?.message
 
-    if (!message) {
-      return new Response(JSON.stringify({ error: 'Message is required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    if (typeof message !== 'string' || message.trim().length === 0) {
+      return json({ error: 'Mensagem obrigatória.' }, 400)
+    }
+    if (message.length > 4000) {
+      return json({ error: 'Mensagem muito longa.' }, 400)
     }
 
-    // Forward to n8n
     const payload = {
-      message,
+      message: message.trim(),
       user_id: user.id,
       timestamp: new Date().toISOString(),
     }
 
-    const n8nResponse = await fetch(N8N_WEBHOOK_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    })
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+
+    let n8nResponse: Response
+    try {
+      n8nResponse = await fetch(N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Jwt': authHeader,
+          'X-Webhook-Secret': N8N_WEBHOOK_SECRET,
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timer)
+    }
 
     if (!n8nResponse.ok) {
-      throw new Error(
-        `Failed to communicate with agent: ${n8nResponse.statusText}`,
+      console.error(
+        'n8n respondeu',
+        n8nResponse.status,
+        await n8nResponse.text(),
       )
+      return json({ error: 'Não consegui falar com o assistente agora.' }, 502)
     }
 
-    // Process n8n response
-    let responseData
-    const contentType = n8nResponse.headers.get('content-type')
-    if (contentType && contentType.includes('application/json')) {
-      responseData = await n8nResponse.json()
-    } else {
-      // Fallback for text response
-      const text = await n8nResponse.text()
-      responseData = { response: text }
-    }
+    const contentType = n8nResponse.headers.get('content-type') ?? ''
+    const responseData = contentType.includes('application/json')
+      ? await n8nResponse.json()
+      : { response: await n8nResponse.text() }
 
-    return new Response(JSON.stringify(responseData), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    return json(responseData)
   } catch (error) {
-    console.error('Error in chat-agent:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    console.error('Erro em chat-agent:', error)
+    const aborted = error instanceof DOMException && error.name === 'AbortError'
+    return json(
+      {
+        error: aborted
+          ? 'O assistente demorou demais para responder.'
+          : 'Erro interno.',
+      },
+      aborted ? 504 : 500,
+    )
   }
 })
