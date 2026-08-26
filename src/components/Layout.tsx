@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { AlertTriangle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { TourOverlay } from './TourOverlay'
+import { ExpandableChat } from '@/components/ui/expandable-chat'
 
 export default function Layout() {
   const { subscription } = useAuth()
@@ -36,6 +37,7 @@ export default function Layout() {
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>
+        <ExpandableChat />
       </div>
     </div>
   )
