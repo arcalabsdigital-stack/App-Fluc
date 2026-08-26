@@ -91,6 +91,7 @@ Deno.serve(async (req) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''}`,
           'X-Internal-Secret': Deno.env.get('WELCOME_EMAIL_SECRET') ?? '',
         },
         body: JSON.stringify({
@@ -135,6 +136,7 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''}`,
             'X-Internal-Secret': Deno.env.get('WELCOME_EMAIL_SECRET') ?? '',
           },
           body: JSON.stringify({
@@ -216,6 +218,7 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''}`,
             'X-Internal-Secret': Deno.env.get('WELCOME_EMAIL_SECRET') ?? '',
           },
           body: JSON.stringify({
