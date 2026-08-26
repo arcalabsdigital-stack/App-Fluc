@@ -1,14 +1,14 @@
 {
   "_versions": {
-    "chat-agent": 31,
-    "welcome-email": 24,
-    "invite-user": 27,
-    "asaas-webhook": 15,
-    "create-checkout": 36,
-    "check-subscriptions": 29,
-    "validar-cupom": 14,
-    "verificar-email": 12,
-    "criar-planos-asas": 30,
-    "generate-notifications": 21
+    "chat-agent": 32,
+    "welcome-email": 25,
+    "invite-user": 28,
+    "asaas-webhook": 16,
+    "create-checkout": 37,
+    "check-subscriptions": 30,
+    "validar-cupom": 15,
+    "verificar-email": 13,
+    "criar-planos-asas": 31,
+    "generate-notifications": 22
   }
 }
