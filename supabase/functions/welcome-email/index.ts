@@ -1,10 +1,11 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
+import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers':
-    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type, x-internal-secret',
 }
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
@@ -14,6 +15,48 @@ Deno.serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+
+  const authHeader = req.headers.get('Authorization')
+  const internalSecret = req.headers.get('X-Internal-Secret')
+  const WELCOME_EMAIL_SECRET = Deno.env.get('WELCOME_EMAIL_SECRET')
+
+  let authenticated = false
+
+  // Case 1: server-to-server with internal secret
+  if (
+    internalSecret &&
+    WELCOME_EMAIL_SECRET &&
+    internalSecret === WELCOME_EMAIL_SECRET
+  ) {
+    authenticated = true
+  }
+
+  // Case 2: user JWT
+  if (!authenticated && authHeader) {
+    try {
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        { global: { headers: { Authorization: authHeader } } },
+      )
+      const {
+        data: { user },
+        error: userError,
+      } = await supabaseClient.auth.getUser()
+      if (!userError && user) {
+        authenticated = true
+      }
+    } catch (_) {
+      // fall through to 401
+    }
+  }
+
+  if (!authenticated) {
+    return new Response(JSON.stringify({ error: 'Não autorizado' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 401,
+    })
   }
 
   try {

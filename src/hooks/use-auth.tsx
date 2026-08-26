@@ -241,7 +241,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     if (plan) data.plan = plan
 
-    const { error } = await supabase.auth.signUp({
+    const { data: signUpData, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -249,6 +249,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         data,
       },
     })
+
+    if (!error) {
+      supabase.functions
+        .invoke('welcome-email', {
+          body: { email, name: fullName },
+        })
+        .catch((err) =>
+          console.error('Falha ao enviar e-mail de boas-vindas:', err),
+        )
+    }
+
     return { error }
   }
 
