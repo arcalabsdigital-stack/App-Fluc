@@ -10,9 +10,7 @@ Deno.serve(async (req) => {
   try {
     const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY')
     if (!ASAAS_API_KEY) {
-      throw new Error(
-        'A chave da API (ASAAS_API_KEY) não está configurada nos segredos.',
-      )
+      throw new Error('A chave da API (ASAAS_API_KEY) não está configurada nos segredos.')
     }
 
     const authHeader = req.headers.get('Authorization')
@@ -51,13 +49,13 @@ Deno.serve(async (req) => {
       {
         name: 'Mensal',
         description: 'Plano mensal completo',
-        amount: 49.9,
+        amount: 49.90,
         interval: 'MONTHLY',
       },
       {
         name: 'Anual',
         description: 'Plano anual com 2 meses grátis',
-        amount: 358.8,
+        amount: 358.80,
         interval: 'YEARLY',
       },
     ]
@@ -113,18 +111,20 @@ Deno.serve(async (req) => {
       const planAmount = plansPayloads[index].amount
       const isAnnual = plansPayloads[index].interval === 'YEARLY'
 
-      return supabaseAdmin.from('plans').upsert(
-        {
-          name: planName,
-          asaas_plan_id: asaasPlan.id,
-          price: isAnnual ? planAmount / 12 : planAmount,
-          price_mensal: isAnnual ? planAmount / 12 : planAmount,
-          price_anual: isAnnual ? planAmount : null,
-          features: featuresMap[planName],
-          billing_period: isAnnual ? 'anual' : 'mensal',
-        },
-        { onConflict: 'name' },
-      )
+      return supabaseAdmin
+        .from('plans')
+        .upsert(
+          {
+            name: planName,
+            asaas_plan_id: asaasPlan.id,
+            price: isAnnual ? planAmount / 12 : planAmount,
+            price_mensal: isAnnual ? planAmount / 12 : planAmount,
+            price_anual: isAnnual ? planAmount : null,
+            features: featuresMap[planName],
+            billing_period: isAnnual ? 'anual' : 'mensal',
+          },
+          { onConflict: 'name' }
+        )
     })
 
     await Promise.all(updatePromises)
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
-      },
+      }
     )
   } catch (error: any) {
     console.error('Erro na Edge Function criar-planos-asas:', error)
