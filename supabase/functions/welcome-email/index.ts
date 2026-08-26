@@ -8,6 +8,7 @@ const corsHeaders = {
 }
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+const APP_URL = Deno.env.get('APP_URL') || 'https://app.fluc.com.br'
 
 Deno.serve(async (req) => {
   // Handle CORS
@@ -97,7 +98,7 @@ Deno.serve(async (req) => {
             }
 
             <center>
-              <a href="https://gestao-financeira-clone-0ca8c.goskip.app" class="btn">Acessar o Fluc Agora</a>
+              <a href="${APP_URL}" class="btn">Acessar o Fluc Agora</a>
             </center>
 
             <div class="contact">
