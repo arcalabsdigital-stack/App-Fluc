@@ -65,6 +65,8 @@ export interface Transacao {
   status?: string
   account_id?: string | null
   is_conciliated?: boolean
+  natureza_contabil?: string
+  efeito_caixa?: string
 }
 
 export interface Conta {
@@ -76,4 +78,63 @@ export interface Conta {
   data_saldo_inicial: string
   is_active: boolean
   saldo_atual?: number
+}
+
+export interface User {
+  id: string
+  name: string
+  totalPaid: number
+  avgMonthlySpend: number
+  status: string
+}
+
+export interface UserProfile {
+  id: string
+  email: string
+  name: string
+  role: Role
+  is_active: boolean
+  created_at: string
+}
+
+export interface KPIMetric {
+  label: string
+  value: string
+  subValue: string
+  trend: number
+  trendLabel: string
+  progress: number
+  color: string
+}
+
+export interface ChartDataPoint {
+  date: string
+  revenue: number
+  expenses: number
+  realized: number
+  projected: number
+  revRealized?: number
+  expRealized?: number
+  revProjected?: number
+  expProjected?: number
+}
+
+export interface CategoryDistribution {
+  name: string
+  value: number
+  percentage: number
+  color: string
+}
+
+export interface PaymentMethodDistribution {
+  name: string
+  value: number
+  color: string
+}
+
+export interface DashboardKPIs {
+  totalBalance?: number
+  monthIncome?: number
+  monthExpense?: number
+  [key: string]: any
 }

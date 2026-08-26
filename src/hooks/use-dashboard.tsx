@@ -135,23 +135,33 @@ export const useDashboard = () => {
       )
 
       const revProjected = dayTrans
-        .filter((t) => t.tipo_id === TipoTransacao.Receita)
+        .filter(
+          (t) =>
+            t.natureza_contabil === 'Receita' ||
+            (!t.natureza_contabil && t.tipo_id === TipoTransacao.Receita),
+        )
         .reduce((acc, curr) => acc + curr.valor, 0)
       const expProjected = dayTrans
-        .filter((t) => t.tipo_id === TipoTransacao.Despesa)
+        .filter(
+          (t) =>
+            t.natureza_contabil === 'Despesa' ||
+            (!t.natureza_contabil && t.tipo_id === TipoTransacao.Despesa),
+        )
         .reduce((acc, curr) => acc + curr.valor, 0)
 
       const revRealized = dayTrans
         .filter(
           (t) =>
-            t.tipo_id === TipoTransacao.Receita &&
+            (t.natureza_contabil === 'Receita' ||
+              (!t.natureza_contabil && t.tipo_id === TipoTransacao.Receita)) &&
             (t.status === 'pago' || t.status === 'parcial'),
         )
         .reduce((acc, curr) => acc + (curr.amount_paid || 0), 0)
       const expRealized = dayTrans
         .filter(
           (t) =>
-            t.tipo_id === TipoTransacao.Despesa &&
+            (t.natureza_contabil === 'Despesa' ||
+              (!t.natureza_contabil && t.tipo_id === TipoTransacao.Despesa)) &&
             (t.status === 'pago' || t.status === 'parcial'),
         )
         .reduce((acc, curr) => acc + (curr.amount_paid || 0), 0)
@@ -176,7 +186,9 @@ export const useDashboard = () => {
     categories: { id: string; nome: string }[],
   ) => {
     const expenses = transactions.filter(
-      (t) => t.tipo_id === TipoTransacao.Despesa,
+      (t) =>
+        t.natureza_contabil === 'Despesa' ||
+        (!t.natureza_contabil && t.tipo_id === TipoTransacao.Despesa),
     )
     const totalExpenses = expenses.reduce((acc, curr) => acc + curr.valor, 0)
 
@@ -224,7 +236,9 @@ export const useDashboard = () => {
 
   const processPaymentData = (transactions: Transacao[]) => {
     const expenses = transactions.filter(
-      (t) => t.tipo_id === TipoTransacao.Despesa,
+      (t) =>
+        t.natureza_contabil === 'Despesa' ||
+        (!t.natureza_contabil && t.tipo_id === TipoTransacao.Despesa),
     )
     const methodMap = new Map<string, number>()
 
@@ -281,7 +295,11 @@ export const useDashboard = () => {
       // Add future manual transactions for this month segment
       futureTransactions.forEach((t) => {
         if (isAfter(t.data, m.start) && !isAfter(t.data, m.end)) {
-          if (t.tipo_id === TipoTransacao.Receita) income += t.valor
+          if (
+            t.natureza_contabil === 'Receita' ||
+            (!t.natureza_contabil && t.tipo_id === TipoTransacao.Receita)
+          )
+            income += t.valor
           else expense += t.valor
         }
       })
@@ -294,7 +312,8 @@ export const useDashboard = () => {
         while (!isAfter(simDate, m.end) && circuitBreaker < 100) {
           circuitBreaker++
           if (isAfter(simDate, m.start)) {
-            if (rt.type === 'Receita') income += Number(rt.amount)
+            if (rt.natureza_contabil === 'Receita' || rt.type === 'Receita')
+              income += Number(rt.amount)
             else expense += Number(rt.amount)
           }
 

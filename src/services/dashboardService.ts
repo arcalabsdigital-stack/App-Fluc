@@ -45,18 +45,31 @@ export const dashboardService = {
       throw error
     }
 
-    return data.map((row) => ({
-      id: row.id,
-      data: new Date(row.date),
-      descricao: row.description,
-      valor: Number(row.amount),
-      amount_paid: Number(row.amount_paid || 0),
-      categoria_id: row.category,
-      tipo_id: row.type as TipoTransacao,
-      forma_pagamento_id: row.payment_method as FormaPagamento,
-      observacoes: row.notes,
-      status: row.status,
-    }))
+    const { data: categories } = await supabase
+      .from('categories')
+      .select('id, nome, natureza_contabil, efeito_caixa')
+
+    const categoryMap = new Map(categories?.map((c) => [c.id, c]) || [])
+
+    return data.map((row) => {
+      const cat =
+        categoryMap.get(row.category) ||
+        categories?.find((c) => c.nome === row.category)
+      return {
+        id: row.id,
+        data: new Date(row.date),
+        descricao: row.description,
+        valor: Number(row.amount),
+        amount_paid: Number(row.amount_paid || 0),
+        categoria_id: row.category,
+        tipo_id: row.type as TipoTransacao,
+        forma_pagamento_id: row.payment_method as FormaPagamento,
+        observacoes: row.notes,
+        status: row.status,
+        natureza_contabil: cat?.natureza_contabil,
+        efeito_caixa: cat?.efeito_caixa,
+      }
+    })
   },
 
   async getFutureTransactions(
@@ -76,18 +89,31 @@ export const dashboardService = {
       throw error
     }
 
-    return data.map((row) => ({
-      id: row.id,
-      data: new Date(row.date),
-      descricao: row.description,
-      valor: Number(row.amount),
-      amount_paid: Number(row.amount_paid || 0),
-      categoria_id: row.category,
-      tipo_id: row.type as TipoTransacao,
-      forma_pagamento_id: row.payment_method as FormaPagamento,
-      observacoes: row.notes,
-      status: row.status,
-    }))
+    const { data: categories } = await supabase
+      .from('categories')
+      .select('id, nome, natureza_contabil, efeito_caixa')
+
+    const categoryMap = new Map(categories?.map((c) => [c.id, c]) || [])
+
+    return data.map((row) => {
+      const cat =
+        categoryMap.get(row.category) ||
+        categories?.find((c) => c.nome === row.category)
+      return {
+        id: row.id,
+        data: new Date(row.date),
+        descricao: row.description,
+        valor: Number(row.amount),
+        amount_paid: Number(row.amount_paid || 0),
+        categoria_id: row.category,
+        tipo_id: row.type as TipoTransacao,
+        forma_pagamento_id: row.payment_method as FormaPagamento,
+        observacoes: row.notes,
+        status: row.status,
+        natureza_contabil: cat?.natureza_contabil,
+        efeito_caixa: cat?.efeito_caixa,
+      }
+    })
   },
 
   async getRecurringTransactions() {
@@ -163,17 +189,30 @@ export const dashboardService = {
       throw error
     }
 
-    return data.map((row) => ({
-      id: row.id,
-      data: new Date(row.date),
-      descricao: row.description,
-      valor: Number(row.amount),
-      amount_paid: Number(row.amount_paid || 0),
-      categoria_id: row.category,
-      tipo_id: row.type as TipoTransacao,
-      forma_pagamento_id: row.payment_method as FormaPagamento,
-      observacoes: row.notes,
-      status: row.status,
-    }))
+    const { data: categories } = await supabase
+      .from('categories')
+      .select('id, nome, natureza_contabil, efeito_caixa')
+
+    const categoryMap = new Map(categories?.map((c) => [c.id, c]) || [])
+
+    return data.map((row) => {
+      const cat =
+        categoryMap.get(row.category) ||
+        categories?.find((c) => c.nome === row.category)
+      return {
+        id: row.id,
+        data: new Date(row.date),
+        descricao: row.description,
+        valor: Number(row.amount),
+        amount_paid: Number(row.amount_paid || 0),
+        categoria_id: row.category,
+        tipo_id: row.type as TipoTransacao,
+        forma_pagamento_id: row.payment_method as FormaPagamento,
+        observacoes: row.notes,
+        status: row.status,
+        natureza_contabil: cat?.natureza_contabil,
+        efeito_caixa: cat?.efeito_caixa,
+      }
+    })
   },
 }
