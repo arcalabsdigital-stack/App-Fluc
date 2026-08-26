@@ -22,6 +22,7 @@ export interface Categoria {
   natureza_contabil?: string
   efeito_caixa?: string
   accounting_group?: string
+  organization_id?: string | null
 }
 
 export interface CategoriaSimplificada {

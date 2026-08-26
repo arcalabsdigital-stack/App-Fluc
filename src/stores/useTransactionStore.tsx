@@ -29,6 +29,15 @@ interface TransactionStore {
   addCategoriaSimplificada: (
     cat: Partial<CategoriaSimplificada>,
   ) => Promise<CategoriaSimplificada | null>
+  addCategory: (
+    cat: Partial<Categoria> & {
+      nome: string
+      tipo: string
+      grupo: string
+      natureza_contabil: string
+      efeito_caixa: string
+    },
+  ) => Promise<Categoria | null>
   markDicaLida: (dicaId: string) => Promise<void>
 }
 
@@ -61,6 +70,32 @@ const useTransactionStore = create<TransactionStore>((set, get) => ({
       dicas: (dicas || []) as DicaContextual[],
       dicasLidas: (lidas || []).map((l) => l.dica_id),
     })
+  },
+  addCategory: async (cat) => {
+    const { data: orgIdRes } = await supabase.rpc('get_current_user_org_id')
+    const { data, error } = await supabase
+      .from('categories')
+      .insert({
+        nome: cat.nome,
+        tipo: cat.tipo,
+        grupo: cat.grupo,
+        natureza_contabil: cat.natureza_contabil,
+        efeito_caixa: cat.efeito_caixa,
+        accounting_group: cat.accounting_group || null,
+        organization_id: orgIdRes,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Erro ao criar categoria:', error)
+      return null
+    }
+    if (data) {
+      set((state) => ({ categories: [...state.categories, data as Categoria] }))
+      return data as Categoria
+    }
+    return null
   },
   addCategoriaSimplificada: async (cat) => {
     const { data: orgIdRes } = await supabase.rpc('get_current_user_org_id')

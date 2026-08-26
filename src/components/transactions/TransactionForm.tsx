@@ -70,17 +70,6 @@ import useTransactionStore from '@/stores/useTransactionStore'
 import { accountService } from '@/services/accountService'
 import { toast } from 'sonner'
 
-const STANDARD_GROUPS = [
-  'RECEITAS',
-  'CUSTOS DIRETOS',
-  'CUSTOS FIXOS',
-  'DESPESAS OPERACIONAIS',
-  'INVESTIMENTOS',
-  'DESPESAS PESSOAIS',
-  'BENS E DIREITOS',
-  'DÍVIDAS',
-]
-
 const AVAILABLE_ICONS = [
   { name: 'Home', icon: Home },
   { name: 'ShoppingCart', icon: ShoppingCart },
@@ -163,12 +152,14 @@ export function TransactionForm({
   initialData,
 }: TransactionFormProps) {
   const {
+    categories,
     categoriasSimplificadas,
     dicas,
     dicasLidas,
     addTransaction,
     updateTransaction,
     addCategoriaSimplificada,
+    addCategory,
     markDicaLida,
   } = useTransactionStore()
 
@@ -182,25 +173,8 @@ export function TransactionForm({
   const [customCatIcon, setCustomCatIcon] = useState('Zap')
 
   const uniqueGroups = useMemo(() => {
-    const customGroups = categoriasSimplificadas
-      .filter((c) => {
-        const isSelected =
-          transactionToEdit &&
-          (c.nome_simplificado === transactionToEdit.categoria_id ||
-            c.id === transactionToEdit.categoria_id)
-        if (isSelected) return true
-
-        const isOrphan =
-          c.criada_por_usuario === false &&
-          !STANDARD_GROUPS.includes(c.tipo_grupo) &&
-          c.tipo_grupo.toLowerCase() === c.tipo_grupo
-        return !isOrphan
-      })
-      .map((c) => c.tipo_grupo)
-      .filter((g) => !STANDARD_GROUPS.includes(g))
-
-    return [...new Set([...STANDARD_GROUPS, ...customGroups])]
-  }, [categoriasSimplificadas, transactionToEdit])
+    return [...new Set(categories.map((c) => c.grupo))].sort()
+  }, [categories])
 
   const [currentTip, setCurrentTip] = useState<{
     id: string
@@ -241,26 +215,31 @@ export function TransactionForm({
   })
 
   const currentCategoriaId = form.watch('categoria_id')
-  const selectedCat = categoriasSimplificadas.find(
-    (c) =>
-      c.nome_simplificado === currentCategoriaId || c.id === currentCategoriaId,
-  )
+  const selectedCat = categories.find((c) => c.id === currentCategoriaId)
 
-  const isAsset = selectedCat?.tipo_grupo === 'BENS E DIREITOS'
-  const isDebt = selectedCat?.tipo_grupo === 'DÍVIDAS'
+  const isAsset = selectedCat?.natureza_contabil === 'Ativo'
+  const isDebt = selectedCat?.natureza_contabil === 'Passivo'
 
   // Effect to show tips
   useEffect(() => {
     if (selectedCat && open) {
-      const tip = dicas.find(
-        (d) => d.categoria_simplificada_id === selectedCat.id,
+      const normalizedName = normalizeString(selectedCat.nome)
+      const matchingSimplificada = categoriasSimplificadas.find(
+        (cs) => normalizeString(cs.nome_simplificado) === normalizedName,
       )
-      if (tip && !dicasLidas.includes(tip.id)) {
-        setCurrentTip({
-          id: tip.id,
-          titulo: tip.titulo,
-          descricao: tip.descricao,
-        })
+      if (matchingSimplificada) {
+        const tip = dicas.find(
+          (d) => d.categoria_simplificada_id === matchingSimplificada.id,
+        )
+        if (tip && !dicasLidas.includes(tip.id)) {
+          setCurrentTip({
+            id: tip.id,
+            titulo: tip.titulo,
+            descricao: tip.descricao,
+          })
+        } else {
+          setCurrentTip(null)
+        }
       } else {
         setCurrentTip(null)
       }
@@ -271,8 +250,8 @@ export function TransactionForm({
   const ajudaVida = form.watch('ajuda_vida_util')
   useEffect(() => {
     if (isAsset && ajudaVida && selectedCat) {
-      const name = selectedCat.nome_simplificado.toLowerCase()
-      let life = 60 // 5 years default
+      const name = selectedCat.nome.toLowerCase()
+      let life = 60
       if (name.includes('máquina') || name.includes('maquina')) life = 120
       if (name.includes('computador') || name.includes('ti')) life = 36
       if (name.includes('veículo') || name.includes('carro')) life = 60
@@ -348,12 +327,12 @@ export function TransactionForm({
       isNewGroup ? newGroupName : customCatGroup,
     )
 
-    const categoryExists = categoriasSimplificadas.some(
-      (c) => normalizeString(c.nome_simplificado) === normalizedName,
+    const categoryExists = categories.some(
+      (c) => normalizeString(c.nome) === normalizedName,
     )
 
     if (categoryExists) {
-      toast.error('Esta categoria ou grupo já existe.')
+      toast.error('Esta categoria já existe.')
       return
     }
 
@@ -364,51 +343,54 @@ export function TransactionForm({
         (g) => normalizeString(g) === normalizedGroup,
       )
       if (groupExists) {
-        toast.error('Esta categoria ou grupo já existe.')
+        toast.error('Este grupo já existe.')
         return
       }
       finalGroup = newGroupName
     }
 
     let nat = 'Despesa',
-      efeito = 'Caixa_Negativo',
-      acc = 'Resultado'
+      efeito = 'Saida' as string,
+      acc = 'Resultado',
+      tipo = 'Despesa' as string
 
     const lowerGroup = finalGroup.toLowerCase()
     if (lowerGroup.includes('receita')) {
       nat = 'Receita'
-      efeito = 'Caixa_Positivo'
+      efeito = 'Entrada'
       acc = 'Resultado'
+      tipo = 'Receita'
     } else if (
       lowerGroup.includes('bens') ||
       lowerGroup.includes('direitos') ||
       lowerGroup.includes('investimentos')
     ) {
       nat = 'Ativo'
-      efeito = 'Caixa_Negativo'
+      efeito = 'Saida'
       acc = 'Ativo Não-Circulante'
+      tipo = 'Despesa'
     } else if (
       lowerGroup.includes('dívida') ||
       lowerGroup.includes('divida') ||
       lowerGroup.includes('passivo')
     ) {
       nat = 'Passivo'
-      efeito = 'Caixa_Positivo'
+      efeito = 'Entrada'
       acc = 'Passivo Não-Circulante'
+      tipo = 'Despesa'
     }
 
-    const newCat = await addCategoriaSimplificada({
-      nome_simplificado: customCatName,
-      tipo_grupo: finalGroup,
+    const newCat = await addCategory({
+      nome: customCatName,
+      tipo,
+      grupo: finalGroup,
       natureza_contabil: nat,
       efeito_caixa: efeito,
       accounting_group: acc,
-      icon: customCatIcon,
-      color: customCatColor,
     })
 
     if (newCat) {
-      form.setValue('categoria_id', newCat.nome_simplificado)
+      form.setValue('categoria_id', newCat.id)
       setShowCustomCatDialog(false)
       setCustomCatName('')
       setIsNewGroup(false)
@@ -438,12 +420,8 @@ export function TransactionForm({
     try {
       setIsSubmitting(true)
 
-      const categoryName = selectedCat?.nome_simplificado || values.categoria_id
-      const isReceita =
-        selectedCat?.natureza_contabil === 'Receita' ||
-        selectedCat?.efeito_caixa === 'Caixa_Positivo' ||
-        selectedCat?.tipo_grupo === 'RECEITAS' ||
-        selectedCat?.tipo_grupo === 'DÍVIDAS'
+      const categoryName = selectedCat?.id || values.categoria_id
+      const isReceita = selectedCat?.natureza_contabil === 'Receita'
 
       const tipoId = isReceita ? TipoTransacao.Receita : TipoTransacao.Despesa
 
@@ -504,15 +482,26 @@ export function TransactionForm({
 
           if (values.vida_util && values.vida_util > 0) {
             const depreciableAmount = values.valor - values.valor_residual
-            const monthlyDepreciation = depreciableAmount / values.vida_util
+            const monthlyDepreciation =
+              Math.round((depreciableAmount / values.vida_util) * 100) / 100
 
             if (monthlyDepreciation > 0) {
+              const depreciacaoCat = categories.find(
+                (c) => c.nome === 'Depreciação e Amortização',
+              )
+              if (!depreciacaoCat) {
+                toast.error(
+                  'Categoria "Depreciação e Amortização" não encontrada no catálogo.',
+                )
+                setIsSubmitting(false)
+                return
+              }
               await addTransaction({
                 descricao: `Depreciação: ${values.descricao}`,
                 valor: monthlyDepreciation,
                 amount_paid: 0,
-                categoria_id: 'Depreciação e Amortização',
-                category: 'Depreciação e Amortização',
+                categoria_id: depreciacaoCat.id,
+                category: depreciacaoCat.id,
                 tipo_id: TipoTransacao.Despesa,
                 forma_pagamento_id: FormaPagamento.Transferencia,
                 data: addMonths(values.data, 1),
@@ -542,15 +531,35 @@ export function TransactionForm({
           } as any)
 
           if (values.parcelas > 0) {
+            const amortizacaoCat = categories.find(
+              (c) => c.nome === 'Amortização de Empréstimos',
+            )
+            const jurosCat = categories.find(
+              (c) => c.nome === 'Juros de Empréstimos',
+            )
+            if (!amortizacaoCat || !jurosCat) {
+              toast.error(
+                'Categorias de financiamento não encontradas no catálogo.',
+              )
+              setIsSubmitting(false)
+              return
+            }
+            const totalComJuros = values.valor + values.juros
             const installmentAmount =
-              (values.valor + values.juros) / values.parcelas
+              Math.round((totalComJuros / values.parcelas) * 100) / 100
+            const principalPorParcela =
+              Math.round((values.valor / values.parcelas) * 100) / 100
+            const jurosPorParcela =
+              Math.round((installmentAmount - principalPorParcela) * 100) / 100
+
             for (let i = 0; i < values.parcelas; i++) {
+              // Parcela principal (amortização)
               await addTransaction({
-                descricao: `Parcela ${i + 1}/${values.parcelas}: ${values.descricao}`,
-                valor: installmentAmount,
+                descricao: `Parcela ${i + 1}/${values.parcelas} (Principal): ${values.descricao}`,
+                valor: principalPorParcela,
                 amount_paid: 0,
-                categoria_id: 'Pagamento de Dívidas',
-                category: 'Pagamento de Dívidas',
+                categoria_id: amortizacaoCat.id,
+                category: amortizacaoCat.id,
                 tipo_id: TipoTransacao.Despesa,
                 forma_pagamento_id: values.forma_pagamento_id,
                 data: addMonths(values.data, i + 1),
@@ -558,6 +567,22 @@ export function TransactionForm({
                 parcelas: 1,
                 account_id: finalAccountId,
               } as any)
+              // Juros da parcela (se houver)
+              if (jurosPorParcela > 0) {
+                await addTransaction({
+                  descricao: `Juros ${i + 1}/${values.parcelas}: ${values.descricao}`,
+                  valor: jurosPorParcela,
+                  amount_paid: 0,
+                  categoria_id: jurosCat.id,
+                  category: jurosCat.id,
+                  tipo_id: TipoTransacao.Despesa,
+                  forma_pagamento_id: values.forma_pagamento_id,
+                  data: addMonths(values.data, i + 1),
+                  status: 'aberto',
+                  parcelas: 1,
+                  account_id: finalAccountId,
+                } as any)
+              }
             }
             toast.success('Dívida e parcelas geradas com sucesso!')
           } else {
@@ -746,10 +771,9 @@ export function TransactionForm({
                           </FormControl>
                           <SelectContent>
                             {uniqueGroups.map((grupo) => {
-                              const catsInGroup =
-                                categoriasSimplificadas.filter(
-                                  (c) => c.tipo_grupo === grupo,
-                                )
+                              const catsInGroup = categories.filter(
+                                (c) => c.grupo === grupo,
+                              )
                               if (catsInGroup.length === 0) return null
                               return (
                                 <SelectGroup key={grupo}>
@@ -759,18 +783,10 @@ export function TransactionForm({
                                   {catsInGroup.map((category) => (
                                     <SelectItem
                                       key={category.id}
-                                      value={category.nome_simplificado}
+                                      value={category.id}
                                     >
                                       <div className="flex items-center gap-2">
-                                        {category.color && (
-                                          <div
-                                            className="w-3 h-3 rounded-full"
-                                            style={{
-                                              backgroundColor: category.color,
-                                            }}
-                                          />
-                                        )}
-                                        {category.nome_simplificado}
+                                        {category.nome}
                                       </div>
                                     </SelectItem>
                                   ))}
