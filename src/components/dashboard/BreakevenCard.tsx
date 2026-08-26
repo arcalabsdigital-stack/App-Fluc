@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Target, TrendingUp, AlertTriangle } from 'lucide-react'
 import { dashboardService } from '@/services/dashboardService'
+import { supabase } from '@/lib/supabase/client'
 import { Transacao } from '@/lib/types'
 import { useAuth } from '@/hooks/use-auth'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -32,31 +33,37 @@ export function BreakevenCard({
         const start = startOfMonth(selectedDate)
         const end = endOfMonth(selectedDate)
 
-        const txs = await dashboardService.getTransactionsForPeriod(start, end)
-        const recurringTxs = await dashboardService.getRecurringTransactions()
+        const [txs, recurringTxs, { data: categories }] = await Promise.all([
+          dashboardService.getTransactionsForPeriod(start, end),
+          dashboardService.getRecurringTransactions(),
+          supabase
+            .from('categories')
+            .select('id, nome, natureza_contabil, efeito_caixa'),
+        ])
+
+        const categoryMap = new Map(categories?.map((c) => [c.id, c]) || [])
 
         let fixedCosts = 0
         let variableCosts = 0
         let revenue = 0
 
         recurringTxs.forEach((rt) => {
-          if (rt.type === 'Despesa' || rt.type === 'expense') {
+          const cat =
+            categoryMap.get(rt.category) ||
+            categories?.find((c) => c.nome === rt.category)
+          const natContabil = cat?.natureza_contabil || rt.type
+
+          if (natContabil === 'Despesa') {
             fixedCosts += Number(rt.amount)
           }
         })
 
         txs.forEach((t: Transacao) => {
-          // Check against possible translations and database constraints
-          if (
-            t.tipo_id === 'Receita' ||
-            t.tipo_id === ('income' as any) ||
-            t.tipo_id === ('revenue' as any)
-          ) {
+          const natContabil = t.natureza_contabil || t.tipo_id
+
+          if (natContabil === 'Receita') {
             revenue += t.valor
-          } else if (
-            t.tipo_id === 'Despesa' ||
-            t.tipo_id === ('expense' as any)
-          ) {
+          } else if (natContabil === 'Despesa') {
             if (!t.recurring_transaction_id) {
               variableCosts += t.valor
             }

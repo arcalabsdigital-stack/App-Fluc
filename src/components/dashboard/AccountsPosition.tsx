@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { transactionService } from '@/services/transactionService'
+import { supabase } from '@/lib/supabase/client'
 import { Transacao, TipoTransacao } from '@/lib/types'
 import { format, differenceInDays, startOfDay } from 'date-fns'
 import { ArrowDownRight, ArrowUpRight, ChevronDown } from 'lucide-react'
@@ -26,16 +27,36 @@ export function AccountsPosition() {
   useEffect(() => {
     async function fetchPositions() {
       try {
-        const txs = await transactionService.fetchTransactions(
-          {
-            search: '',
-            type: 'all',
-            category: 'all',
-            paymentMethod: 'all',
-            status: 'aberto',
-          },
-          'admin',
-        )
+        const [rawTxs, { data: categories }] = await Promise.all([
+          transactionService.fetchTransactions(
+            {
+              search: '',
+              type: 'all',
+              category: 'all',
+              paymentMethod: 'all',
+              status: 'aberto',
+              dateRange: undefined,
+            },
+            'admin',
+          ),
+          supabase
+            .from('categories')
+            .select('id, nome, natureza_contabil, efeito_caixa'),
+        ])
+
+        const categoryMap = new Map(categories?.map((c) => [c.id, c]) || [])
+
+        const txs = rawTxs.map((tx) => {
+          const cat =
+            categoryMap.get(tx.categoria_id) ||
+            categories?.find((c) => c.nome === tx.categoria_id)
+
+          return {
+            ...tx,
+            natureza_contabil: cat?.natureza_contabil,
+            efeito_caixa: cat?.efeito_caixa,
+          }
+        })
 
         const today = startOfDay(new Date())
 
@@ -86,10 +107,19 @@ export function AccountsPosition() {
           else if (diff <= 15) targetGroup = groups[2]
           else if (diff <= 30) targetGroup = groups[3]
 
-          if (tx.tipo_id === TipoTransacao.Despesa) {
+          if (tx.efeito_caixa === 'Saida') {
             targetGroup.payable += tx.valor
-          } else {
+          } else if (tx.efeito_caixa === 'Entrada') {
             targetGroup.receivable += tx.valor
+          } else if (tx.efeito_caixa === 'Sem_efeito') {
+            // Sem efeito no caixa
+          } else {
+            // Fallback para tipo_id se sem efeito_caixa definido
+            if (tx.tipo_id === TipoTransacao.Despesa) {
+              targetGroup.payable += tx.valor
+            } else {
+              targetGroup.receivable += tx.valor
+            }
           }
           targetGroup.transactions.push(tx)
         })
@@ -171,12 +201,22 @@ export function AccountsPosition() {
                       <span
                         className={cn(
                           'font-bold',
-                          tx.tipo_id === 'Despesa'
+                          (
+                            tx.efeito_caixa
+                              ? tx.efeito_caixa === 'Saida'
+                              : tx.tipo_id === 'Despesa'
+                          )
                             ? 'text-red-600'
                             : 'text-green-600',
                         )}
                       >
-                        {tx.tipo_id === 'Despesa' ? '-' : '+'}
+                        {(
+                          tx.efeito_caixa
+                            ? tx.efeito_caixa === 'Saida'
+                            : tx.tipo_id === 'Despesa'
+                        )
+                          ? '-'
+                          : '+'}
                         {formatCurrency(tx.valor)}
                       </span>
                     </div>
