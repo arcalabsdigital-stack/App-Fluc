@@ -1,60 +1,139 @@
 import { supabase } from '@/lib/supabase/client'
 
-export interface CategoriaSimplificada {
+export type NaturezaContabil =
+  | 'Receita'
+  | 'Despesa'
+  | 'Ativo'
+  | 'Passivo'
+  | 'PL'
+export type EfeitoCaixa = 'Entrada' | 'Saida' | 'Sem_efeito'
+
+export interface Category {
   id: string
+  nome: string
+  tipo: 'Receita' | 'Despesa'
+  grupo: string
+  created_at?: string
+  accounting_group?: string | null
+  natureza_contabil: NaturezaContabil
+  efeito_caixa: EfeitoCaixa
   organization_id: string | null
-  nome_simplificado: string
-  tipo_grupo: string
-  natureza_contabil: string
-  efeito_caixa: string
-  accounting_group: string
-  permite_customizacao: boolean
-  criada_por_usuario: boolean
-  icon: string | null
-  color: string | null
 }
+
+const VALID_NATUREZAS: NaturezaContabil[] = [
+  'Receita',
+  'Despesa',
+  'Ativo',
+  'Passivo',
+  'PL',
+]
+
+const VALID_EFEITOS: EfeitoCaixa[] = ['Entrada', 'Saida', 'Sem_efeito']
 
 export const categoryService = {
   async fetchCategories() {
-    const { data, error } = await supabase
-      .from('categoria_simplificada')
-      .select('*')
-      .order('nome_simplificado')
+    const org_id = (await supabase.rpc('get_current_user_org_id')).data
+
+    let query = supabase.from('categories').select('*').order('nome')
+
+    if (org_id) {
+      query = query.or(`organization_id.is.null,organization_id.eq.${org_id}`)
+    } else {
+      query = query.is('organization_id', null)
+    }
+
+    const { data, error } = await query
 
     if (error) throw error
-    return data as CategoriaSimplificada[]
+    return data as Category[]
   },
 
-  async createCategory(category: Partial<CategoriaSimplificada>) {
+  async createCategory(category: {
+    nome: string
+    grupo: string
+    natureza_contabil: NaturezaContabil
+    efeito_caixa: EfeitoCaixa
+    tipo?: 'Receita' | 'Despesa'
+    accounting_group?: string | null
+  }) {
+    if (
+      !category.natureza_contabil ||
+      !VALID_NATUREZAS.includes(category.natureza_contabil)
+    ) {
+      throw new Error(
+        `Natureza contábil inválida: ${category.natureza_contabil}`,
+      )
+    }
+
+    if (
+      !category.efeito_caixa ||
+      !VALID_EFEITOS.includes(category.efeito_caixa)
+    ) {
+      throw new Error(`Efeito caixa inválido: ${category.efeito_caixa}`)
+    }
+
     const org_id = (await supabase.rpc('get_current_user_org_id')).data
+    const tipo =
+      category.tipo ||
+      (category.natureza_contabil === 'Receita' ? 'Receita' : 'Despesa')
+
     const { data, error } = await supabase
-      .from('categoria_simplificada')
+      .from('categories')
       .insert({
-        ...category,
+        nome: category.nome,
+        grupo: category.grupo,
+        tipo,
+        natureza_contabil: category.natureza_contabil,
+        efeito_caixa: category.efeito_caixa,
+        accounting_group: category.accounting_group || null,
         organization_id: org_id,
-        criada_por_usuario: true,
-        natureza_contabil: category.natureza_contabil || 'Despesa',
-        efeito_caixa: category.efeito_caixa || 'Com Efeito',
-        accounting_group:
-          category.accounting_group || category.tipo_grupo || 'Outros',
       })
       .select()
       .single()
 
     if (error) throw error
-    return data
+    return data as Category
   },
 
-  async updateCategory(id: string, updates: Partial<CategoriaSimplificada>) {
+  async updateCategory(
+    id: string,
+    updates: Partial<{
+      nome: string
+      grupo: string
+      tipo: 'Receita' | 'Despesa'
+      natureza_contabil: NaturezaContabil
+      efeito_caixa: EfeitoCaixa
+      accounting_group: string | null
+    }>,
+  ) {
+    if (
+      updates.natureza_contabil &&
+      !VALID_NATUREZAS.includes(updates.natureza_contabil)
+    ) {
+      throw new Error(
+        `Natureza contábil inválida: ${updates.natureza_contabil}`,
+      )
+    }
+
+    if (updates.efeito_caixa && !VALID_EFEITOS.includes(updates.efeito_caixa)) {
+      throw new Error(`Efeito caixa inválido: ${updates.efeito_caixa}`)
+    }
+
+    const payload: Record<string, any> = { ...updates }
+    if (updates.natureza_contabil && !updates.tipo) {
+      payload.tipo =
+        updates.natureza_contabil === 'Receita' ? 'Receita' : 'Despesa'
+    }
+
     const { data, error } = await supabase
-      .from('categoria_simplificada')
-      .update(updates)
+      .from('categories')
+      .update(payload)
       .eq('id', id)
       .select()
       .single()
 
     if (error) throw error
-    return data
+    return data as Category
   },
 
   async deleteCategory(id: string, fallbackCategoryId?: string) {
@@ -77,10 +156,7 @@ export const categoryService = {
         .eq('category_id', id)
     }
 
-    const { error } = await supabase
-      .from('categoria_simplificada')
-      .delete()
-      .eq('id', id)
+    const { error } = await supabase.from('categories').delete().eq('id', id)
 
     if (error) throw error
   },
