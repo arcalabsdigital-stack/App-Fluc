@@ -53,8 +53,7 @@ Deno.serve(async (req) => {
     if (action === 'delete') {
       if (!userId) throw new Error('ID do usuário não fornecido')
 
-      if (!profile.organization_id)
-        throw new Error('Organização não encontrada')
+      if (!profile.organization_id) throw new Error('Organização não encontrada')
 
       const { error: deleteError } = await supabaseAdmin
         .from('user_workspaces')
@@ -62,10 +61,7 @@ Deno.serve(async (req) => {
         .eq('user_id', userId)
         .eq('organization_id', profile.organization_id)
 
-      if (deleteError)
-        throw new Error(
-          `Erro ao excluir usuário do workspace: ${deleteError.message}`,
-        )
+      if (deleteError) throw new Error(`Erro ao excluir usuário do workspace: ${deleteError.message}`)
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -122,13 +118,10 @@ Deno.serve(async (req) => {
           user_id: userId,
           organization_id: profile.organization_id,
           role: role,
-          is_active: true, // Auto-activate link
+          is_active: true // Auto-activate link
         })
 
-      if (linkError)
-        throw new Error(
-          `Erro ao vincular usuário existente: ${linkError.message}`,
-        )
+      if (linkError) throw new Error(`Erro ao vincular usuário existente: ${linkError.message}`)
 
       try {
         const res = await fetch(`${supabaseUrl}/functions/v1/welcome-email`, {
@@ -143,23 +136,15 @@ Deno.serve(async (req) => {
             // no password since user already exists
           }),
         })
-        if (!res.ok)
-          console.error('Failed to send welcome email for existing user')
+        if (!res.ok) console.error('Failed to send welcome email for existing user')
       } catch (e) {
         console.error('Exception sending welcome email:', e)
       }
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: 'Convite enviado',
-          convite_id: userId,
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        },
-      )
+      return new Response(JSON.stringify({ success: true, message: 'Convite enviado', convite_id: userId }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      })
     } else {
       // New user
       if (!password) {
@@ -206,10 +191,10 @@ Deno.serve(async (req) => {
           user_id: newUser.user.id,
           organization_id: profile.organization_id,
           role: role,
-          is_active: true,
+          is_active: true
         })
-
-      if (wsError) console.error('Erro ao registrar user_workspace', wsError)
+        
+      if (wsError) console.error("Erro ao registrar user_workspace", wsError)
 
       try {
         const res = await fetch(`${supabaseUrl}/functions/v1/welcome-email`, {
@@ -232,18 +217,10 @@ Deno.serve(async (req) => {
         console.error('Exception sending welcome email:', e)
       }
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: 'Convite enviado',
-          convite_id: newUser.user.id,
-          user: newUser.user,
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        },
-      )
+      return new Response(JSON.stringify({ success: true, message: 'Convite enviado', convite_id: newUser.user.id, user: newUser.user }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      })
     }
   } catch (error: any) {
     let errorMessage = error.message || 'Erro desconhecido'
