@@ -30,28 +30,43 @@ export function ValuationTab() {
           .select('amount, type, category')
           .gte('date', start.toISOString())
           .lte('date', end.toISOString()),
-        supabase.from('categories').select('id, nome, accounting_group'),
+        supabase
+          .from('categories')
+          .select(
+            'id, nome, natureza_contabil, efeito_caixa, accounting_group',
+          ),
       ])
 
       let calcEbitda = 0
 
       if (txs && cats) {
+        const catMap = new Map(cats.map((c) => [c.id, c]))
         txs.forEach((t) => {
-          const cat = cats.find(
-            (c) => c.id === t.category || c.nome === t.category,
-          )
-          const accGroup = cat?.accounting_group || ''
+          const cat =
+            catMap.get(t.category) || cats.find((c) => c.nome === t.category)
           const val = Number(t.amount)
-
-          if (t.type === 'Receita' && accGroup !== 'Ativo') {
-            calcEbitda += val
-          } else if (t.type === 'Despesa') {
-            if (
-              accGroup !== 'Passivo' &&
-              accGroup !== 'Ativo' &&
-              accGroup !== 'Não Desembolsável'
-            ) {
+          // Se houver natureza_contabil na categoria, usa estritamente a classificação contábil
+          // despesa operacional = categories.natureza_contabil = 'Despesa'
+          // receita operacional = categories.natureza_contabil = 'Receita'
+          if (cat?.natureza_contabil) {
+            if (cat.natureza_contabil === 'Receita') {
+              calcEbitda += val
+            } else if (cat.natureza_contabil === 'Despesa') {
               calcEbitda -= val
+            }
+          } else {
+            // Fallback caso categoria não tenha natureza_contabil preenchida
+            const accGroup = cat?.accounting_group || ''
+            if (t.type === 'Receita' && accGroup !== 'Ativo') {
+              calcEbitda += val
+            } else if (t.type === 'Despesa') {
+              if (
+                accGroup !== 'Passivo' &&
+                accGroup !== 'Ativo' &&
+                accGroup !== 'Não Desembolsável'
+              ) {
+                calcEbitda -= val
+              }
             }
           }
         })

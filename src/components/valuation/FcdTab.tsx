@@ -24,10 +24,17 @@ export function FcdTab() {
 
       let cashFlow = 0
       txs.forEach((t) => {
-        if (t.tipo_id === 'Receita') cashFlow += t.valor
-        if (t.tipo_id === 'Despesa') cashFlow -= t.valor
+        if (t.efeito_caixa) {
+          if (t.efeito_caixa === 'Entrada') cashFlow += t.valor
+          else if (t.efeito_caixa === 'Saida') cashFlow -= t.valor
+          // 'Sem_efeito' não movimenta caixa
+        } else {
+          // Fallback se não houver efeito_caixa definido na categoria
+          if (t.tipo_id === 'Receita') cashFlow += t.valor
+          if (t.tipo_id === 'Despesa') cashFlow -= t.valor
+        }
       })
-      setBaseFcf(cashFlow || 10000)
+      setBaseFcf(cashFlow > 0 ? cashFlow : 0)
       setLoading(false)
     }
     load()
